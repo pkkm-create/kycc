@@ -1,0 +1,1667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kylee's Command Center</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root {
+  --euca:#5C8B6E;--euca-deep:#3D6B52;--euca-mid:#6FA882;--euca-light:#A8CAAF;
+  --euca-mist:#D6EAD9;--euca-fog:#EEF6EF;--cream:#FAF8F4;--sand:#F2EDE4;
+  --bark:#7A6655;--text:#2C3A2E;--text-mid:#4A5E4E;--muted:#8FA495;
+  --border:rgba(92,139,110,0.14);--border-soft:rgba(92,139,110,0.08);
+  --shadow-sm:0 2px 12px rgba(61,107,82,0.08);--shadow-md:0 6px 28px rgba(61,107,82,0.12);
+  --warn:#C4863A;--danger:#B85555;--sage:#8FAF78;--white:#FFFFFF;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--text);min-height:100vh;overflow-x:hidden}
+
+/* SIDEBAR */
+.sidebar{position:fixed;left:0;top:0;bottom:0;width:240px;background:var(--euca-deep);display:flex;flex-direction:column;z-index:100;box-shadow:4px 0 32px rgba(0,0,0,0.12)}
+.sb-brand{padding:24px 20px 16px;border-bottom:1px solid rgba(255,255,255,0.08)}
+.sb-logo{font-family:'Fraunces',serif;font-size:21px;font-weight:600;color:#C5DFC8;letter-spacing:-0.3px}
+.sb-logo span{display:block;font-size:13px;font-weight:300;font-style:italic;color:rgba(255,255,255,0.6);margin-top:1px}
+.sb-sub{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.28);margin-top:5px}
+.sb-user{padding:12px 20px;border-bottom:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;gap:10px}
+.sb-avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--euca-light),var(--euca-mid));display:flex;align-items:center;justify-content:center;font-family:'Fraunces',serif;font-size:14px;font-weight:600;color:var(--euca-deep);flex-shrink:0}
+.sb-name{font-size:13px;font-weight:600;color:rgba(255,255,255,0.92)}
+.sb-role{font-size:10px;color:rgba(255,255,255,0.4)}
+.sb-nav{flex:1;padding:10px 0;overflow-y:auto}
+.sb-section{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.28);padding:12px 20px 4px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 20px;cursor:pointer;transition:all 0.15s;color:rgba(255,255,255,0.55);font-size:13px;font-weight:500;border-left:2.5px solid transparent;position:relative}
+.nav-item:hover{background:rgba(255,255,255,0.05);color:rgba(255,255,255,0.85)}
+.nav-item.active{background:rgba(197,223,200,0.10);color:#C5DFC8;border-left-color:#C5DFC8}
+.nav-icon{font-size:14px;width:18px;text-align:center;flex-shrink:0}
+.nav-badge{margin-left:auto;background:rgba(197,223,200,0.18);color:#C5DFC8;font-size:10px;font-weight:600;padding:1px 7px;border-radius:20px;font-family:'DM Mono',monospace}
+.sb-bottom{padding:12px 20px 16px;border-top:1px solid rgba(255,255,255,0.08)}
+.privacy-pill{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.09);border-radius:9px;padding:9px 11px;display:flex;align-items:flex-start;gap:7px}
+.privacy-dot{width:6px;height:6px;border-radius:50%;background:#A8CAAF;margin-top:3px;flex-shrink:0}
+.privacy-text{font-size:9.5px;color:rgba(255,255,255,0.38);line-height:1.5}
+.privacy-text strong{color:rgba(255,255,255,0.6);display:block;margin-bottom:1px;font-size:10px}
+
+/* MAIN */
+.main{margin-left:240px;min-height:100vh;display:flex;flex-direction:column}
+.topbar{background:var(--white);border-bottom:1px solid var(--border);padding:0 28px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;box-shadow:0 1px 0 var(--border-soft)}
+.topbar-title{font-family:'Fraunces',serif;font-size:19px;font-weight:400;color:var(--euca-deep)}
+.topbar-right{display:flex;align-items:center;gap:8px}
+.chip{display:flex;align-items:center;gap:5px;background:var(--euca-fog);border:1px solid var(--border);border-radius:20px;padding:4px 12px;font-size:11px;color:var(--muted);font-weight:500}
+.chip span{color:var(--euca-deep);font-weight:700}
+.content{padding:26px 28px;flex:1}
+.panel{display:none;animation:fadeUp 0.2s ease}
+.panel.active{display:block}
+@keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+/* COMPONENTS */
+.btn{padding:8px 16px;border-radius:10px;font-size:12.5px;font-weight:600;cursor:pointer;border:none;transition:all 0.15s;font-family:'DM Sans',sans-serif}
+.btn-primary{background:var(--euca);color:#fff;box-shadow:0 2px 8px rgba(92,139,110,0.28)}
+.btn-primary:hover{background:var(--euca-deep);transform:translateY(-1px)}
+.btn-soft{background:var(--euca-fog);color:var(--euca-deep);border:1px solid var(--border)}
+.btn-soft:hover{background:var(--euca-mist)}
+.btn-outline{background:transparent;color:var(--euca-deep);border:1.5px solid var(--euca-light)}
+.btn-outline:hover{background:var(--euca-fog)}
+.btn-warn{background:rgba(196,134,58,0.12);color:var(--warn);border:1px solid rgba(196,134,58,0.2)}
+.btn-sm{padding:5px 12px;font-size:11.5px;border-radius:8px}
+
+.card{background:var(--white);border-radius:14px;border:1px solid var(--border);box-shadow:var(--shadow-sm);overflow:hidden}
+.card-hd{padding:13px 18px;border-bottom:1px solid var(--border-soft);display:flex;align-items:center;justify-content:space-between}
+.card-title{font-size:11px;font-weight:700;color:var(--euca-deep);text-transform:uppercase;letter-spacing:0.8px}
+.card-bd{padding:18px}
+
+.hero{background:linear-gradient(135deg,var(--euca-deep) 0%,var(--euca) 100%);border-radius:16px;padding:26px;margin-bottom:22px;position:relative;overflow:hidden;box-shadow:var(--shadow-md)}
+.hero::before{content:'';position:absolute;right:-50px;bottom:-50px;width:200px;height:200px;border-radius:50%;background:rgba(255,255,255,0.05)}
+.hero-tag{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.45);margin-bottom:7px;font-family:'DM Mono',monospace;position:relative;z-index:1}
+.hero-title{font-family:'Fraunces',serif;font-size:27px;font-weight:600;color:#fff;letter-spacing:-0.4px;line-height:1.1;position:relative;z-index:1}
+.hero-sub{font-size:12.5px;color:rgba(255,255,255,0.68);margin-top:7px;max-width:500px;line-height:1.55;position:relative;z-index:1}
+.hero-actions{display:flex;gap:9px;margin-top:18px;position:relative;z-index:1}
+.btn-hero{background:rgba(255,255,255,0.18);color:#fff;border:1px solid rgba(255,255,255,0.28);padding:7px 16px;border-radius:9px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all 0.15s}
+.btn-hero:hover{background:rgba(255,255,255,0.28)}
+.btn-hero-solid{background:#fff;color:var(--euca-deep);padding:7px 16px;border-radius:9px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;border:none;transition:all 0.15s;box-shadow:0 2px 8px rgba(0,0,0,0.1)}
+.btn-hero-solid:hover{transform:translateY(-1px)}
+
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
+
+.stat-card{background:var(--white);border-radius:14px;padding:18px;border:1px solid var(--border);box-shadow:var(--shadow-sm);position:relative;overflow:hidden;transition:transform 0.15s;cursor:default}
+.stat-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-md)}
+.stat-card::after{content:'';position:absolute;bottom:0;left:0;right:0;height:3px;border-radius:0 0 14px 14px}
+.sc-green::after{background:linear-gradient(90deg,var(--euca),var(--sage))}
+.sc-warn::after{background:linear-gradient(90deg,var(--warn),#E0A060)}
+.sc-danger::after{background:linear-gradient(90deg,var(--danger),#D47070)}
+.sc-soft::after{background:linear-gradient(90deg,var(--euca-light),var(--euca-mist))}
+.stat-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-weight:600}
+.stat-val{font-family:'Fraunces',serif;font-size:40px;font-weight:600;line-height:1;margin:5px 0 2px;color:var(--euca-deep)}
+.stat-val.warn{color:var(--warn)} .stat-val.danger{color:var(--danger)} .stat-val.soft{color:var(--euca)}
+.stat-sub{font-size:11px;color:var(--muted)}
+
+.section-hd{font-family:'Fraunces',serif;font-size:16px;font-weight:400;font-style:italic;color:var(--euca-deep);margin-bottom:11px;display:flex;align-items:center;gap:9px}
+.section-hd::after{content:'';flex:1;height:1px;background:var(--border)}
+
+.bar-row{margin-bottom:12px}
+.bar-labels{display:flex;justify-content:space-between;font-size:11.5px;margin-bottom:4px}
+.bar-labels span:first-child{font-weight:600;color:var(--text)}
+.bar-labels span:last-child{color:var(--muted);font-family:'DM Mono',monospace;font-size:11px}
+.bar-track{height:7px;background:var(--sand);border-radius:99px;overflow:hidden}
+.bar-fill{height:100%;border-radius:99px;transition:width 0.6s ease}
+.fill-euca{background:linear-gradient(90deg,var(--euca-deep),var(--euca-mid))}
+.fill-sage{background:linear-gradient(90deg,var(--sage),#A8D490)}
+.fill-warn{background:linear-gradient(90deg,var(--warn),#E0A060)}
+.fill-danger{background:linear-gradient(90deg,var(--danger),#D47070)}
+
+.tag{font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;text-transform:uppercase;letter-spacing:0.3px;display:inline-block}
+.tag-green{background:var(--euca-fog);color:var(--euca-deep)}
+.tag-warn{background:rgba(196,134,58,0.10);color:var(--warn)}
+.tag-danger{background:rgba(184,85,85,0.10);color:var(--danger)}
+.tag-soft{background:var(--sand);color:var(--bark)}
+.tag-sage{background:rgba(143,175,120,0.15);color:#3D6B30}
+
+.chip-row{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}
+.chip-sm{font-size:10.5px;padding:2px 8px;border-radius:5px;background:var(--sand);color:var(--bark);font-weight:500}
+
+.divider{height:1px;background:var(--border-soft);margin:12px 0}
+
+.ai-box{background:linear-gradient(135deg,var(--euca-deep),var(--euca));border-radius:12px;padding:14px 16px;color:#fff;font-size:12.5px;line-height:1.6;margin-top:12px}
+.ai-box::before{content:'✦ AI Insight';font-size:9px;font-weight:700;letter-spacing:1.2px;color:rgba(255,255,255,0.5);display:block;margin-bottom:6px;font-family:'DM Mono',monospace}
+
+.upload-zone{border:2px dashed var(--euca-light);border-radius:12px;padding:28px;text-align:center;background:var(--euca-fog);cursor:pointer;transition:all 0.18s;margin-bottom:16px}
+.upload-zone:hover,.upload-zone.dragover{border-color:var(--euca);background:var(--euca-mist)}
+.upload-zone input[type=file]{display:none}
+.upload-icon{font-size:26px;margin-bottom:8px}
+.upload-title{font-size:14px;font-weight:700;color:var(--euca-deep)}
+.upload-sub{font-size:11.5px;color:var(--muted);margin-top:3px;line-height:1.5}
+.fmt-chips{display:flex;gap:5px;justify-content:center;margin-top:8px;flex-wrap:wrap}
+.fmt{background:#fff;color:var(--euca-deep);font-size:9.5px;font-weight:700;padding:2px 7px;border-radius:4px;border:1px solid var(--border);font-family:'DM Mono',monospace}
+
+.t-row{display:flex;align-items:center;gap:11px;padding:9px 0;border-bottom:1px solid var(--border-soft);cursor:pointer;transition:all 0.13s}
+.t-row:last-child{border-bottom:none}
+.t-row:hover{background:var(--euca-fog);margin:0 -10px;padding:9px 10px;border-radius:8px}
+.t-av{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--euca-light),var(--euca));color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.t-name{font-size:13px;font-weight:600;color:var(--text)}
+.t-sub{font-size:10.5px;color:var(--muted)}
+.t-status{margin-left:auto;font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px}
+.st-ok{background:var(--euca-fog);color:var(--euca-deep)}
+.st-due{background:rgba(196,134,58,0.10);color:var(--warn)}
+.st-over{background:rgba(184,85,85,0.10);color:var(--danger)}
+
+.std-card{background:var(--white);border:1px solid var(--border);border-radius:11px;padding:13px;margin-bottom:9px;cursor:pointer;transition:all 0.13s}
+.std-card:hover{border-color:var(--euca);box-shadow:var(--shadow-sm);transform:translateY(-1px)}
+.std-code{font-family:'DM Mono',monospace;font-size:10px;background:var(--euca);color:#fff;padding:2px 7px;border-radius:4px;display:inline-block;margin-bottom:5px}
+.std-desc{font-size:12.5px;line-height:1.4;color:var(--text)}
+.std-grade{font-size:10.5px;color:var(--muted);margin-top:3px}
+.level-row{display:flex;gap:5px;margin-top:10px}
+.lp{flex:1;padding:4px;border-radius:6px;text-align:center;font-size:10px;font-weight:700}
+.l4{background:rgba(92,139,110,0.12);color:var(--euca-deep)}
+.l3{background:rgba(92,139,110,0.07);color:var(--euca)}
+.l2{background:rgba(196,134,58,0.10);color:var(--warn)}
+.l1{background:rgba(184,85,85,0.10);color:var(--danger)}
+
+.search-bar{display:flex;gap:9px;margin-bottom:16px}
+.search-input{flex:1;padding:9px 14px;border:1.5px solid var(--border);border-radius:9px;font-size:13px;font-family:'DM Sans',sans-serif;color:var(--text);background:var(--white);outline:none;transition:border-color 0.13s}
+.search-input:focus{border-color:var(--euca)}
+.search-input::placeholder{color:var(--muted)}
+
+.tabs{display:flex;gap:2px;background:var(--sand);border-radius:10px;padding:3px;margin-bottom:15px;width:fit-content}
+.tab{padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;color:var(--muted);transition:all 0.13s}
+.tab.active{background:#fff;color:var(--euca-deep);box-shadow:0 1px 4px rgba(0,0,0,0.08)}
+
+.textarea{width:100%;padding:10px 13px;border:1.5px solid var(--border);border-radius:9px;font-size:12.5px;font-family:'DM Sans',sans-serif;color:var(--text);background:var(--white);outline:none;resize:vertical;line-height:1.5;transition:border-color 0.13s}
+.textarea:focus{border-color:var(--euca)}
+.input-field{width:100%;padding:9px 13px;border:1.5px solid var(--border);border-radius:9px;font-size:13px;font-family:'DM Sans',sans-serif;color:var(--text);background:var(--white);outline:none;transition:border-color 0.13s}
+.input-field:focus{border-color:var(--euca)}
+.field-label{font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px}
+.field-group{margin-bottom:13px}
+
+.growth-card{background:var(--white);border:1px solid var(--border);border-radius:11px;padding:13px;margin-bottom:9px;transition:all 0.13s}
+.growth-card:hover{border-color:var(--euca);box-shadow:var(--shadow-sm)}
+.growth-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px}
+.growth-name{font-size:13px;font-weight:700;color:var(--text)}
+
+.evidence-item{display:flex;align-items:flex-start;gap:9px;padding:9px 0;border-bottom:1px solid var(--border-soft)}
+.evidence-item:last-child{border-bottom:none}
+.ev-dot{width:7px;height:7px;border-radius:50%;margin-top:4px;flex-shrink:0}
+.ev-text{font-size:12.5px;line-height:1.45;color:var(--text);font-weight:600}
+.ev-meta{font-size:10px;color:var(--muted);margin-top:1px}
+
+.coach-card{background:var(--white);border:1px solid var(--border);border-radius:11px;overflow:hidden;margin-bottom:9px}
+.coach-hd{padding:11px 14px;background:var(--euca-fog);border-bottom:1px solid var(--border-soft);display:flex;align-items:center;justify-content:space-between}
+.coach-bd{padding:12px 14px;font-size:12.5px;line-height:1.5;color:var(--text)}
+
+.res-tag{font-size:9.5px;font-weight:700;padding:2px 7px;border-radius:4px}
+.rt-hattie{background:rgba(92,139,110,0.12);color:var(--euca-deep)}
+.rt-marzano{background:rgba(143,175,120,0.18);color:#3D6B30}
+.rt-tlac{background:rgba(196,134,58,0.12);color:var(--warn)}
+
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.35);z-index:200;align-items:center;justify-content:center;backdrop-filter:blur(3px)}
+.modal-overlay.open{display:flex}
+.modal{background:var(--white);border-radius:18px;padding:28px;max-width:600px;width:90%;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.2)}
+.modal-title{font-family:'Fraunces',serif;font-size:22px;font-weight:600;color:var(--euca-deep);margin-bottom:16px}
+.modal-close{float:right;cursor:pointer;font-size:20px;color:var(--muted);background:none;border:none;line-height:1;padding:0}
+
+.spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite;vertical-align:middle;margin-right:6px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.toast{position:fixed;bottom:24px;right:24px;background:var(--euca-deep);color:#fff;padding:12px 18px;border-radius:12px;font-size:13px;font-weight:500;box-shadow:var(--shadow-md);z-index:999;transform:translateY(80px);opacity:0;transition:all 0.3s ease}
+.toast.show{transform:translateY(0);opacity:1}
+
+/* CHAT MODULE */
+.chat-wrap{display:flex;flex-direction:column;height:calc(100vh - 180px);min-height:500px}
+.chat-messages{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px;background:var(--cream);border-radius:14px;border:1px solid var(--border);margin-bottom:12px}
+.chat-msg{max-width:80%;display:flex;flex-direction:column;gap:4px}
+.chat-msg.user{align-self:flex-end;align-items:flex-end}
+.chat-msg.ai{align-self:flex-start;align-items:flex-start}
+.chat-bubble{padding:11px 15px;border-radius:16px;font-size:13px;line-height:1.55;white-space:pre-wrap}
+.chat-msg.user .chat-bubble{background:var(--euca-deep);color:#fff;border-bottom-right-radius:4px}
+.chat-msg.ai .chat-bubble{background:#fff;color:var(--text);border:1px solid var(--border);border-bottom-left-radius:4px;box-shadow:var(--shadow-sm)}
+.chat-msg-meta{font-size:10px;color:var(--muted);padding:0 4px}
+.chat-input-row{display:flex;gap:9px;align-items:flex-end}
+.chat-input{flex:1;padding:11px 14px;border:1.5px solid var(--border);border-radius:12px;font-size:13px;font-family:'DM Sans',sans-serif;color:var(--text);background:#fff;outline:none;resize:none;line-height:1.5;max-height:120px;transition:border-color 0.13s}
+.chat-input:focus{border-color:var(--euca)}
+.chat-send{width:44px;height:44px;border-radius:12px;background:var(--euca-deep);color:#fff;border:none;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.15s}
+.chat-send:hover{background:var(--euca);transform:translateY(-1px)}
+.chat-send:disabled{background:var(--euca-light);cursor:not-allowed;transform:none}
+.chat-typing{display:flex;gap:4px;align-items:center;padding:11px 15px;background:#fff;border-radius:16px;border:1px solid var(--border);border-bottom-left-radius:4px;width:fit-content}
+.chat-typing span{width:7px;height:7px;border-radius:50%;background:var(--euca-light);animation:bounce 1.2s infinite}
+.chat-typing span:nth-child(2){animation-delay:0.2s}
+.chat-typing span:nth-child(3){animation-delay:0.4s}
+@keyframes bounce{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-6px)}}
+.chat-suggestions{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px}
+.chat-sug{background:#fff;border:1.5px solid var(--border);border-radius:20px;padding:6px 13px;font-size:11.5px;color:var(--euca-deep);font-weight:600;cursor:pointer;transition:all 0.13s;font-family:'DM Sans',sans-serif}
+.chat-sug:hover{background:var(--euca-fog);border-color:var(--euca)}
+
+.result-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:12px}
+.result-table th{background:var(--euca-deep);color:#fff;padding:8px 10px;text-align:left;font-size:10px;letter-spacing:0.5px;text-transform:uppercase}
+.result-table td{padding:8px 10px;border-bottom:1px solid var(--border-soft);color:var(--text)}
+.result-table tr:nth-child(even) td{background:var(--euca-fog)}
+.result-table tr:hover td{background:var(--euca-mist)}
+
+.eval-prog{flex:1}
+.eval-prog-hd{font-size:10px;color:var(--muted);margin-bottom:3px;display:flex;justify-content:space-between}
+.eval-prog-bar{height:4px;background:var(--sand);border-radius:99px;overflow:hidden}
+.eval-prog-fill{height:100%;border-radius:99px}
+
+.mb12{margin-bottom:12px} .mb16{margin-bottom:16px} .mb20{margin-bottom:20px}
+.flex{display:flex} .flex-center{align-items:center} .gap8{gap:8px} .gap12{gap:12px}
+.flex1{flex:1} .text-right{text-align:right} .mt8{margin-top:8px} .mt12{margin-top:12px}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sb-brand">
+    <div class="sb-logo">Command Center<span>my AP toolkit</span></div>
+    <div class="sb-sub">Personal · Private · Portable</div>
+  </div>
+  <div class="sb-user">
+    <div class="sb-avatar">KM</div>
+    <div><div class="sb-name">Kylee Meyer</div><div class="sb-role">Assistant Principal</div></div>
+  </div>
+  <nav class="sb-nav">
+    <div class="sb-section">Home</div>
+    <div class="nav-item active" onclick="nav('dashboard',this)"><span class="nav-icon">⬡</span>Dashboard</div>
+    <div class="sb-section">Modules</div>
+    <div class="nav-item" onclick="nav('proficiency',this)"><span class="nav-icon">📊</span>Proficiency Analyzer<span class="nav-badge" id="badge-prof">0</span></div>
+    <div class="nav-item" onclick="nav('eval',this)"><span class="nav-icon">📋</span>Teacher Evaluation<span class="nav-badge" id="badge-eval">0</span></div>
+    <div class="nav-item" onclick="nav('coaching',this)"><span class="nav-icon">🌱</span>Coaching Hub</div>
+    <div class="nav-item" onclick="nav('growth',this)"><span class="nav-icon">🎯</span>My Growth</div>
+    <div class="nav-item" onclick="nav('standards',this)"><span class="nav-icon">📚</span>Standards Library</div>
+    <div class="nav-item" onclick="nav('chat',this)"><span class="nav-icon">💬</span>Ask AI Coach</div>
+    <div class="sb-section">Settings</div>
+    <div class="nav-item" onclick="nav('privacy',this)"><span class="nav-icon">🔒</span>Privacy & Data</div>
+    <div class="nav-item" onclick="nav('setup',this)"><span class="nav-icon">⚙️</span>School Setup</div>
+  </nav>
+  <div class="sb-bottom">
+    <div class="privacy-pill">
+      <div class="privacy-dot"></div>
+      <div class="privacy-text"><strong>Zero Data Retention</strong>Session only. Nothing stored. No FERPA risk.</div>
+    </div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+  <div class="topbar">
+    <div class="topbar-title" id="topbar-title">Good morning, Kylee</div>
+    <div class="topbar-right">
+      <div class="chip">Year <span id="chip-year">2025–26</span></div>
+      <div class="chip">School <span id="chip-school">—</span></div>
+      <button class="btn btn-primary btn-sm" onclick="nav('setup',document.querySelector('[onclick*=setup]'))">⚙ Setup</button>
+    </div>
+  </div>
+  <div class="content">
+
+<!-- ══════════════════════════════════════════════════════════
+     DASHBOARD
+══════════════════════════════════════════════════════════ -->
+<div class="panel active" id="panel-dashboard">
+  <div style="margin-bottom:20px">
+    <div style="font-family:'Fraunces',serif;font-size:26px;font-weight:300;color:var(--euca-deep)">Good morning, <em>Kylee.</em></div>
+    <div style="font-size:12.5px;color:var(--muted);margin-top:4px" id="dash-date"></div>
+  </div>
+  <div class="grid4">
+    <div class="stat-card sc-soft"><div class="stat-label">Teachers Tracked</div><div class="stat-val soft" id="ds-teachers">0</div><div class="stat-sub">Across grade levels</div></div>
+    <div class="stat-card sc-warn"><div class="stat-label">Evals Needing Action</div><div class="stat-val warn" id="ds-evals">0</div><div class="stat-sub">Overdue or due soon</div></div>
+    <div class="stat-card sc-green"><div class="stat-label">Evidence Items Logged</div><div class="stat-val soft" id="ds-evidence">0</div><div class="stat-sub">This session</div></div>
+    <div class="stat-card sc-danger"><div class="stat-label">Coaching Cycles</div><div class="stat-val danger" id="ds-coaching">0</div><div class="stat-sub">Active this session</div></div>
+  </div>
+  <div class="grid2">
+    <div class="card">
+      <div class="card-hd"><div class="card-title">Recent Teacher Evaluations</div><button class="btn btn-soft btn-sm" onclick="nav('eval',document.querySelector('[onclick*=eval]'))">View All</button></div>
+      <div class="card-bd" id="dash-eval-list"><div style="color:var(--muted);font-size:12.5px;text-align:center;padding:20px">Add teachers in the Eval module to see status here.</div></div>
+    </div>
+    <div class="card">
+      <div class="card-hd"><div class="card-title">Recent Evidence Logged</div><button class="btn btn-soft btn-sm" onclick="nav('growth',document.querySelector('[onclick*=growth]'))">View All</button></div>
+      <div class="card-bd" id="dash-evidence-list"><div style="color:var(--muted);font-size:12.5px;text-align:center;padding:20px">Log evidence in My Growth to see it here.</div></div>
+    </div>
+  </div>
+  <div class="mt12">
+    <div class="card">
+      <div class="card-hd"><div class="card-title">Quick Actions</div></div>
+      <div class="card-bd" style="display:flex;gap:9px;flex-wrap:wrap">
+        <button class="btn btn-primary" onclick="nav('proficiency',document.querySelector('[onclick*=proficiency]'))">📊 Upload Class Data</button>
+        <button class="btn btn-soft" onclick="nav('eval',document.querySelector('[onclick*=eval]'))">📋 Log Observation</button>
+        <button class="btn btn-soft" onclick="nav('coaching',document.querySelector('[onclick*=coaching]'))">🌱 Open Coaching Hub</button>
+        <button class="btn btn-outline" onclick="nav('growth',document.querySelector('[onclick*=growth]'))">🎯 Log Evidence</button>
+        <button class="btn btn-outline" onclick="nav('standards',document.querySelector('[onclick*=standards]'))">📚 Search Standards</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     MODULE 1: PROFICIENCY ANALYZER
+══════════════════════════════════════════════════════════ -->
+<div class="panel" id="panel-proficiency">
+  <div class="hero">
+    <div class="hero-tag">Module 1</div>
+    <div class="hero-title">Class Proficiency Analyzer</div>
+    <div class="hero-sub">Upload IC gradebook exports — instantly see MLS-aligned proficiency by standard with AI gap analysis. Zero data retained after this session.</div>
+    <div class="hero-actions">
+      <button class="btn-hero-solid" onclick="document.getElementById('prof-file-input').click()">Upload Data File</button>
+      <button class="btn-hero" onclick="showModal('modal-prof-help')">How It Works</button>
+    </div>
+  </div>
+
+  <div class="upload-zone" id="prof-drop-zone" onclick="document.getElementById('prof-file-input').click()">
+    <input type="file" id="prof-file-input" accept=".pdf,.csv,.xlsx,.xls" onchange="handleProfFile(this.files[0])">
+    <div class="upload-icon">🌿</div>
+    <div class="upload-title">Drop your IC gradebook export here</div>
+    <div class="upload-sub">Drag and drop, or click to browse. Nothing leaves your browser — no data is stored after you close this tab.</div>
+    <div class="fmt-chips"><span class="fmt">PDF</span><span class="fmt">CSV</span><span class="fmt">XLSX</span><span class="fmt">XLS</span></div>
+  </div>
+
+  <div id="prof-processing" style="display:none;text-align:center;padding:30px;color:var(--muted)">
+    <div class="spinner" style="border-top-color:var(--euca);border-color:var(--euca-light)"></div>
+    Processing your file...
+  </div>
+
+  <div id="prof-results" style="display:none">
+    <div class="tabs" id="prof-grade-tabs"></div>
+    <div class="grid2" id="prof-results-grid"></div>
+    <div id="prof-ai-section" style="margin-top:16px"></div>
+  </div>
+
+  <div id="prof-empty" style="display:block">
+    <div class="section-hd">Sample View — What You'll See After Uploading</div>
+    <div class="grid2">
+      <div>
+        <div class="std-card">
+          <div class="std-code">RL.1-3 · Grade 3</div>
+          <div class="std-desc">Key Ideas and Details — Literature</div>
+          <div class="level-row">
+            <div class="lp l4">L4 · 18%</div><div class="lp l3">L3 · 44%</div><div class="lp l2">L2 · 21%</div><div class="lp l1">L1 · 17%</div>
+          </div>
+        </div>
+        <div class="std-card">
+          <div class="std-code">RI.1-2 · Grade 3</div>
+          <div class="std-desc">Key Ideas and Details — Informational Text</div>
+          <div class="level-row">
+            <div class="lp l4">L4 · 12%</div><div class="lp l3">L3 · 41%</div><div class="lp l2">L2 · 28%</div><div class="lp l1">L1 · 19%</div>
+          </div>
+        </div>
+        <div class="std-card">
+          <div class="std-code" style="background:var(--sage)">OA · Grade 3</div>
+          <div class="std-desc">Operations & Algebraic Thinking</div>
+          <div class="level-row">
+            <div class="lp l4">L4 · 22%</div><div class="lp l3">L3 · 38%</div><div class="lp l2">L2 · 24%</div><div class="lp l1">L1 · 16%</div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="ai-box">
+          <strong>Gap Alert — RI.1-2 Grade 3:</strong> 47% of students performing below proficiency on Informational Text Key Ideas — highest concentration of L1–L2 in this class.<br><br>
+          <strong>Recommendation:</strong> Whole-class intervention on main idea and supporting details in non-fiction. Tier 2 small group support for 5 students at L1 across both RL.1-3 and RI.1-2.<br><br>
+          <strong>Research basis:</strong> Hattie effect size for feedback = 0.73. Marzano Strategy 4 (nonlinguistic representations) directly maps to RI.1-2 QI. Consider TLAC technique "Cold Call" for comprehension accountability during read-aloud.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     MODULE 2: TEACHER EVALUATION
+══════════════════════════════════════════════════════════ -->
+<div class="panel" id="panel-eval">
+  <div class="hero">
+    <div class="hero-tag">Module 2</div>
+    <div class="hero-title">Teacher Evaluation Tracker</div>
+    <div class="hero-sub">Manage the full Missouri OEQ evaluation cycle — 9 teaching standards, solo & co-observations, summative forms, AI-drafted feedback. Session only. Nothing persists.</div>
+    <div class="hero-actions">
+      <button class="btn-hero-solid" onclick="showModal('modal-add-teacher')">+ Add Teacher</button>
+      <button class="btn-hero" onclick="showModal('modal-obs-help')">Missouri Standards Guide</button>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <div>
+      <div class="section-hd">Teacher Roster</div>
+      <div id="teacher-roster"><div style="color:var(--muted);font-size:12.5px;text-align:center;padding:30px;border:1.5px dashed var(--border);border-radius:12px">No teachers added yet.<br><span style="font-size:11px">Click "+ Add Teacher" above to get started.</span></div></div>
+    </div>
+    <div>
+      <div class="section-hd">Active Observation</div>
+      <div id="obs-panel">
+        <div style="color:var(--muted);font-size:12.5px;text-align:center;padding:30px;border:1.5px dashed var(--border);border-radius:12px">Select a teacher from the roster to begin an observation.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     MODULE 3: COACHING HUB
+══════════════════════════════════════════════════════════ -->
+<div class="panel" id="panel-coaching">
+  <div class="hero">
+    <div class="hero-tag">Module 3</div>
+    <div class="hero-title">Instructional Coaching Hub</div>
+    <div class="hero-sub">Research-backed coaching from Hattie, Marzano, and Teach Like a Champion — surfaced by what you're seeing in classrooms. AI drafts your feedback emails.</div>
+    <div class="hero-actions">
+      <button class="btn-hero-solid" onclick="showModal('modal-new-cycle')">+ New Coaching Cycle</button>
+      <button class="btn-hero" onclick="showModal('modal-draft-email')">✉ Draft Feedback Email</button>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <div>
+      <div class="section-hd">Active Coaching Cycles</div>
+      <div id="coaching-cycles-list">
+        <div style="color:var(--muted);font-size:12.5px;text-align:center;padding:30px;border:1.5px dashed var(--border);border-radius:12px">No active cycles.<br><span style="font-size:11px">Click "+ New Coaching Cycle" to begin.</span></div>
+      </div>
+    </div>
+    <div>
+      <div class="section-hd">Research Strategy Finder</div>
+      <div class="search-bar">
+        <input class="search-input" id="strategy-search" placeholder="Describe what you observed (e.g. 'low engagement during independent reading')">
+        <button class="btn btn-primary" onclick="findStrategy()">Find Strategy</button>
+      </div>
+      <div id="strategy-results">
+        <div class="coach-card">
+          <div class="coach-hd"><div style="font-size:12.5px;font-weight:700;color:var(--text)">Hattie: Feedback (d=0.73)</div><span class="res-tag rt-hattie">Hattie</span></div>
+          <div class="coach-bd">One of the highest-impact interventions. Timely, specific feedback on the task — not the person — dramatically increases student achievement. For teachers: model giving feedback in lesson debrief.</div>
+        </div>
+        <div class="coach-card">
+          <div class="coach-hd"><div style="font-size:12.5px;font-weight:700;color:var(--text)">TLAC: Cold Call (Technique 22)</div><span class="res-tag rt-tlac">TLAC</span></div>
+          <div class="coach-bd">Call on students regardless of hand-raising. Normalizes participation for all students and maintains academic accountability throughout independent and whole-group work. Maps to MO Standard 5.2.</div>
+        </div>
+        <div class="coach-card">
+          <div class="coach-hd"><div style="font-size:12.5px;font-weight:700;color:var(--text)">Marzano: Cooperative Learning (Element 25)</div><span class="res-tag rt-marzano">Marzano</span></div>
+          <div class="coach-bd">Structured group work with individual accountability increases engagement and content mastery. Map to MO Standards 4.3 and 5.2. Pair with an accountability artifact — exit slip, sticky note, turn-and-talk.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     MODULE 4: MY GROWTH
+══════════════════════════════════════════════════════════ -->
+<div class="panel" id="panel-growth">
+  <div class="hero">
+    <div class="hero-tag">Module 4</div>
+    <div class="hero-title">My Principal Growth Tracker</div>
+    <div class="hero-sub">Track development against Missouri Principal Standards, log evidence from daily work, and build your leadership portfolio. Entirely private — session only.</div>
+    <div class="hero-actions">
+      <button class="btn-hero-solid" onclick="showModal('modal-add-evidence')">+ Log Evidence</button>
+      <button class="btn-hero" onclick="generateGrowthPlan()">Generate Growth Plan Draft</button>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <div>
+      <div class="section-hd">Missouri Principal Standards</div>
+      <div id="principal-standards-list"></div>
+    </div>
+    <div>
+      <div class="section-hd">Evidence Log</div>
+      <div class="card">
+        <div class="card-hd"><div class="card-title">This Session</div><button class="btn btn-soft btn-sm" onclick="showModal('modal-add-evidence')">+ Add</button></div>
+        <div class="card-bd" id="evidence-log-list"><div style="color:var(--muted);font-size:12px;text-align:center;padding:16px">No evidence logged yet this session.</div></div>
+      </div>
+      <div id="growth-ai-output" style="margin-top:12px"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     MODULE 5: STANDARDS LIBRARY
+══════════════════════════════════════════════════════════ -->
+<div class="panel" id="panel-standards">
+  <div class="hero">
+    <div class="hero-tag">Module 5</div>
+    <div class="hero-title">Missouri Standards Library</div>
+    <div class="hero-sub">Every Missouri Learning Standard K–5 across ELA, Math, Science, and Social Studies — searchable instantly with proficiency descriptors and linked strategies.</div>
+  </div>
+
+  <div class="search-bar">
+    <input class="search-input" id="standards-search" placeholder="Search by code (e.g. RL.1-3), keyword (e.g. 'main idea'), or subject..." onkeyup="searchStandards(this.value)">
+    <button class="btn btn-primary" onclick="searchStandards(document.getElementById('standards-search').value)">Search</button>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" onclick="filterStd('all',this)">All</div>
+    <div class="tab" onclick="filterStd('ELA',this)">ELA</div>
+    <div class="tab" onclick="filterStd('Math',this)">Math</div>
+    <div class="tab" onclick="filterStd('Science',this)">Science</div>
+    <div class="tab" onclick="filterStd('Social Studies',this)">Social Studies</div>
+  </div>
+
+  <div id="standards-grid" class="grid3"></div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     MODULE 6: AI COACH CHAT
+══════════════════════════════════════════════════════════ -->
+<div class="panel" id="panel-chat">
+  <div class="hero" style="margin-bottom:16px">
+    <div class="hero-tag">Module 6</div>
+    <div class="hero-title">Ask AI Coach</div>
+    <div class="hero-sub">Your personal thought partner. Bounce ideas, think through hard situations, get research-backed suggestions — any time, totally private.</div>
+  </div>
+
+  <div class="chat-suggestions" id="chat-suggestions">
+    <button class="chat-sug" onclick="sendSuggestion('How do I approach a difficult conversation with a struggling teacher?')">Difficult teacher conversation</button>
+    <button class="chat-sug" onclick="sendSuggestion('What should an AP focus on in their first year to build credibility with staff?')">First year credibility</button>
+    <button class="chat-sug" onclick="sendSuggestion('Help me think through how to give feedback after a weak observation without being discouraging.')">Post-observation feedback</button>
+    <button class="chat-sug" onclick="sendSuggestion('What does research say about the most impactful things a principal can do to improve student achievement?')">High-impact principal moves</button>
+    <button class="chat-sug" onclick="sendSuggestion('How do I build a coaching relationship with a veteran teacher who is resistant to feedback?')">Resistant veteran teacher</button>
+    <button class="chat-sug" onclick="sendSuggestion('What are the Missouri Principal Standards I should focus on as an aspiring principal?')">Missouri Principal Standards</button>
+  </div>
+
+  <div class="chat-wrap">
+    <div class="chat-messages" id="chat-messages">
+      <div class="chat-msg ai">
+        <div class="chat-bubble">Hi Kylee! 👋 I'm your AI coaching partner — think of me as a thought partner who knows Missouri's educator evaluation framework, principal standards, and research from Hattie, Marzano, and Teach Like a Champion inside and out.
+
+What's on your mind? You can ask me anything — a tough situation with a teacher, ideas for your growth plan, how to handle a parent concern, what the research says about something you're seeing in classrooms... whatever would be helpful.
+
+Everything stays private — this conversation isn't stored anywhere.</div>
+        <div class="chat-msg-meta">AI Coach · ready</div>
+      </div>
+    </div>
+    <div class="chat-input-row">
+      <textarea class="chat-input" id="chat-input" rows="1" placeholder="Ask me anything..." onkeydown="chatKeyDown(event)" oninput="autoResize(this)"></textarea>
+      <button class="chat-send" id="chat-send-btn" onclick="sendChat()">↑</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     PRIVACY
+══════════════════════════════════════════════════════════ -->
+<div class="panel" id="panel-privacy">
+  <div class="hero">
+    <div class="hero-tag">Data Protection</div>
+    <div class="hero-title">Privacy & Zero Data Retention</div>
+    <div class="hero-sub">Built for zero liability — not by policy, but by architecture. Here's exactly what that means.</div>
+  </div>
+  <div class="grid2 mb16">
+    <div class="card"><div class="card-hd"><div class="card-title">🎓 FERPA</div></div><div class="card-bd" style="font-size:12.5px;line-height:1.6;color:var(--text-mid)">FERPA is triggered when student education records are stored or transmitted to a third party persistently. This tool never stores a student record. Uploading a gradebook PDF here is functionally identical to opening it in your browser — FERPA does not regulate that. No student name, ID, or score ever touches a server in a stored state.</div></div>
+    <div class="card"><div class="card-hd"><div class="card-title">👩‍🏫 MNEA / MSTA Union</div></div><div class="card-bd" style="font-size:12.5px;line-height:1.6;color:var(--text-mid)">Teacher unions have concerns about observation data in district-controlled systems that can be subpoenaed. None of that applies here. Observation notes, eval progress, and coaching records exist only in your session. There is no district-controlled database. There is nothing to subpoena. This tool is a smart notepad — not a surveillance system.</div></div>
+    <div class="card"><div class="card-hd"><div class="card-title">⚖️ HR Exposure</div></div><div class="card-bd" style="font-size:12.5px;line-height:1.6;color:var(--text-mid)">HR issues arise when informal notes about employees exist in accessible systems. Because nothing is stored between sessions, there is no repository of draft observations or coaching notes that anyone else could access — not your principal, not HR, not a district administrator. Your notes are yours until you choose to formally transmit them through official channels.</div></div>
+    <div class="card"><div class="card-hd"><div class="card-title">☁️ What the AI Sees</div></div><div class="card-bd" style="font-size:12.5px;line-height:1.6;color:var(--text-mid)">When you request AI-generated content, your text is sent to Claude via an encrypted Cloudflare Worker. Claude processes it and returns a response. The Worker does not log, store, or transmit content elsewhere. Use role-based labels ("3rd Grade ELA teacher") rather than real names in AI prompts.</div></div>
+    <div class="card"><div class="card-hd"><div class="card-title">💻 Personal Device</div></div><div class="card-bd" style="font-size:12.5px;line-height:1.6;color:var(--text-mid)">Use this tool on a personal device on personal wifi — not a district-owned device on the school network. District IT monitoring can see network traffic on school equipment. Since this is your personal tool at your personal URL, using it on a personal device is the natural use case.</div></div>
+    <div class="card"><div class="card-hd"><div class="card-title">🏫 Changing Schools</div></div><div class="card-bd" style="font-size:12.5px;line-height:1.6;color:var(--text-mid)">Because nothing from any school is ever stored, no data carries over when you move. When you update School Setup, you only change a display name and colors. No student records, eval history, or coaching notes transfer — because none of it was ever retained. Clean slate every time.</div></div>
+  </div>
+  <div class="ai-box" style="margin-top:0">
+    <strong>30-second explanation for administrators:</strong><br>
+    "This tool is a browser-based smart notepad. It helps me analyze data and draft documents, but it stores nothing. The moment I close the tab, everything is gone — no database, no server history, no retained records. It's the same as using a PDF reader — nothing persists unless I explicitly save and send it through official channels."
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     SETUP
+══════════════════════════════════════════════════════════ -->
+<div class="panel" id="panel-setup">
+  <div class="hero">
+    <div class="hero-tag">Configuration</div>
+    <div class="hero-title">School Setup</div>
+    <div class="hero-sub">Configure once. Fully rebranded in under 5 minutes when you change schools. Paste your Cloudflare Worker URL to activate AI features.</div>
+  </div>
+  <div class="grid2">
+    <div class="card">
+      <div class="card-hd"><div class="card-title">School Identity</div></div>
+      <div class="card-bd">
+        <div class="field-group"><div class="field-label">School Name</div><input class="input-field" id="cfg-school" placeholder="Enter your school name"></div>
+        <div class="field-group"><div class="field-label">District</div><input class="input-field" id="cfg-district" placeholder="Enter your district"></div>
+        <div class="field-group"><div class="field-label">Principal Name</div><input class="input-field" id="cfg-principal" placeholder="Your principal's name"></div>
+        <div class="field-group"><div class="field-label">Mascot / Nickname</div><input class="input-field" id="cfg-mascot" placeholder="e.g. Lions 🦁"></div>
+        <div class="field-group"><div class="field-label">Assessment Platform</div><input class="input-field" id="cfg-assessment" placeholder="e.g. iReady, MAP"></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-hd"><div class="card-title">AI Configuration</div></div>
+      <div class="card-bd">
+        <div class="field-group"><div class="field-label">Cloudflare Worker URL</div><input class="input-field" id="cfg-worker" placeholder="https://your-worker.workers.dev"></div>
+        <div style="font-size:11px;color:var(--muted);margin-top:5px;line-height:1.5">Paste your Cloudflare Worker URL here to activate AI features. See the GitHub setup instructions for how to create this. Without it, you can still use all manual features.</div>
+        <div class="divider"></div>
+        <div class="field-group"><div class="field-label">School Year</div><input class="input-field" id="cfg-year" placeholder="e.g. 2025–26" value="2025–26"></div>
+        <div class="field-group"><div class="field-label">Your Name</div><input class="input-field" id="cfg-name" placeholder="Your name" value="Kylee Meyer"></div>
+        <div class="field-group"><div class="field-label">State Standards</div><input class="input-field" value="Missouri (DESE)" readonly style="background:var(--euca-fog);color:var(--muted)"></div>
+      </div>
+    </div>
+  </div>
+  <div style="text-align:center;margin-top:18px;display:flex;gap:10px;justify-content:center">
+    <button class="btn btn-primary" onclick="saveConfig()" style="padding:10px 32px;font-size:13.5px">Save Configuration</button>
+    <button class="btn btn-soft" onclick="loadConfig()" style="padding:10px 32px;font-size:13.5px">Reload Saved</button>
+  </div>
+</div>
+
+  </div><!-- /content -->
+</main>
+
+<!-- ══════════════════════════════════════════════════════════
+     MODALS
+══════════════════════════════════════════════════════════ -->
+
+<!-- Add Teacher -->
+<div class="modal-overlay" id="modal-add-teacher" onclick="closeModalOut(event,this)">
+  <div class="modal">
+    <div class="modal-title">Add Teacher <button class="modal-close" onclick="closeModal('modal-add-teacher')">×</button></div>
+    <div class="field-group"><div class="field-label">Teacher Name</div><input class="input-field" id="at-name" placeholder="e.g. Sarah Reynolds"></div>
+    <div class="field-group"><div class="field-label">Grade Level</div>
+      <select class="input-field" id="at-grade">
+        <option value="K">Kindergarten</option><option value="1">1st Grade</option><option value="2">2nd Grade</option>
+        <option value="3">3rd Grade</option><option value="4">4th Grade</option><option value="5">5th Grade</option><option value="Multi">Multi-Grade</option>
+      </select>
+    </div>
+    <div class="field-group"><div class="field-label">Subject / Focus</div><input class="input-field" id="at-subject" placeholder="e.g. ELA, Math, All Subjects"></div>
+    <div class="field-group"><div class="field-label">Teacher Track</div>
+      <select class="input-field" id="at-track">
+        <option value="new">New Teacher (Yr 1–2) — Summative for New Teachers</option>
+        <option value="vet">Veteran Teacher — Standard Summative Form</option>
+      </select>
+    </div>
+    <div class="field-group"><div class="field-label">Observation Type</div>
+      <select class="input-field" id="at-obstype">
+        <option value="solo">Solo Observation</option>
+        <option value="co">Co-Observation (with principal)</option>
+      </select>
+    </div>
+    <div class="field-group"><div class="field-label">Summative Due Date</div><input class="input-field" id="at-due" type="date"></div>
+    <div style="display:flex;gap:9px;justify-content:flex-end;margin-top:16px">
+      <button class="btn btn-soft" onclick="closeModal('modal-add-teacher')">Cancel</button>
+      <button class="btn btn-primary" onclick="addTeacher()">Add Teacher</button>
+    </div>
+  </div>
+</div>
+
+<!-- Observation Form -->
+<div class="modal-overlay" id="modal-observation" onclick="closeModalOut(event,this)">
+  <div class="modal" style="max-width:700px">
+    <div class="modal-title" id="obs-modal-title">Observation <button class="modal-close" onclick="closeModal('modal-observation')">×</button></div>
+    <div class="grid2 mb12">
+      <div class="field-group"><div class="field-label">Date</div><input class="input-field" id="obs-date" type="date"></div>
+      <div class="field-group"><div class="field-label">Duration</div>
+        <select class="input-field" id="obs-duration">
+          <option>15 min (informal walkthrough)</option><option>30 min (formal)</option><option selected>45 min (formal)</option><option>60 min (full period)</option>
+        </select>
+      </div>
+    </div>
+    <div class="field-group"><div class="field-label">Observation Notes</div><textarea class="textarea" id="obs-notes" rows="5" placeholder="What did you observe? Describe what the teacher was doing, what students were doing, specific moments of strength or concern..."></textarea></div>
+    <div class="field-group"><div class="field-label">Missouri Teaching Standards — Check All Observed</div>
+      <div id="obs-standards-checklist" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px"></div>
+    </div>
+    <div style="display:flex;gap:9px;margin-top:14px">
+      <button class="btn btn-primary flex1" onclick="saveObservation()" style="padding:10px">Save Observation</button>
+      <button class="btn btn-soft flex1" onclick="generateObsFeedback()" style="padding:10px" id="obs-ai-btn">✦ Generate AI Feedback Draft</button>
+    </div>
+    <div id="obs-ai-output" style="margin-top:12px"></div>
+  </div>
+</div>
+
+<!-- New Coaching Cycle -->
+<div class="modal-overlay" id="modal-new-cycle" onclick="closeModalOut(event,this)">
+  <div class="modal">
+    <div class="modal-title">New Coaching Cycle <button class="modal-close" onclick="closeModal('modal-new-cycle')">×</button></div>
+    <div class="field-group"><div class="field-label">Teacher (Role/Grade — no real names in AI)</div><input class="input-field" id="nc-teacher" placeholder="e.g. 3rd Grade ELA Teacher"></div>
+    <div class="field-group"><div class="field-label">Coaching Focus</div><input class="input-field" id="nc-focus" placeholder="e.g. Student engagement during independent reading"></div>
+    <div class="field-group"><div class="field-label">Research Framework</div>
+      <select class="input-field" id="nc-research">
+        <option value="hattie">Hattie — Visible Learning</option>
+        <option value="marzano">Marzano — Art & Science of Teaching</option>
+        <option value="tlac">Teach Like a Champion (Lemov)</option>
+        <option value="all">All Three</option>
+      </select>
+    </div>
+    <div class="field-group"><div class="field-label">Number of Observations Planned</div>
+      <select class="input-field" id="nc-obs-count">
+        <option value="2">2 Observations</option><option value="3" selected>3 Observations</option><option value="4">4 Observations</option>
+      </select>
+    </div>
+    <div class="field-group"><div class="field-label">Cycle Start Date</div><input class="input-field" id="nc-start" type="date"></div>
+    <div style="display:flex;gap:9px;justify-content:flex-end;margin-top:16px">
+      <button class="btn btn-soft" onclick="closeModal('modal-new-cycle')">Cancel</button>
+      <button class="btn btn-primary" onclick="addCoachingCycle()">Start Cycle</button>
+    </div>
+  </div>
+</div>
+
+<!-- Draft Email -->
+<div class="modal-overlay" id="modal-draft-email" onclick="closeModalOut(event,this)">
+  <div class="modal" style="max-width:700px">
+    <div class="modal-title">Draft Feedback Email <button class="modal-close" onclick="closeModal('modal-draft-email')">×</button></div>
+    <div class="field-group"><div class="field-label">Teacher Role (no real names)</div><input class="input-field" id="em-teacher" placeholder="e.g. 3rd Grade ELA Teacher"></div>
+    <div class="field-group"><div class="field-label">What did you observe? (Strength first)</div><textarea class="textarea" id="em-strength" rows="3" placeholder="Describe the strongest moment you observed in this lesson..."></textarea></div>
+    <div class="field-group"><div class="field-label">What's the growth focus?</div><textarea class="textarea" id="em-growth" rows="2" placeholder="What is the one area you want this teacher to focus on improving?"></textarea></div>
+    <div class="field-group"><div class="field-label">Tone</div>
+      <select class="input-field" id="em-tone">
+        <option value="warm">Warm & encouraging</option><option value="direct">Direct & professional</option><option value="coaching">Coaching conversation starter</option>
+      </select>
+    </div>
+    <div style="display:flex;gap:9px;margin-top:14px">
+      <button class="btn btn-primary flex1" onclick="generateEmail()" style="padding:10px">Generate Email Draft</button>
+    </div>
+    <div id="email-output" style="margin-top:12px"></div>
+  </div>
+</div>
+
+<!-- Add Evidence -->
+<div class="modal-overlay" id="modal-add-evidence" onclick="closeModalOut(event,this)">
+  <div class="modal">
+    <div class="modal-title">Log Evidence <button class="modal-close" onclick="closeModal('modal-add-evidence')">×</button></div>
+    <div class="field-group"><div class="field-label">What did you do?</div><textarea class="textarea" id="ev-desc" rows="3" placeholder="Briefly describe the work or activity (1–3 sentences)..."></textarea></div>
+    <div class="field-group"><div class="field-label">Missouri Principal Standard</div>
+      <select class="input-field" id="ev-standard">
+        <option value="1">Standard 1 — Visionary Leadership</option>
+        <option value="2">Standard 2 — Instructional Leadership</option>
+        <option value="3">Standard 3 — Managerial Leadership</option>
+        <option value="4">Standard 4 — Relational Leadership</option>
+        <option value="5">Standard 5 — Innovative Leadership</option>
+      </select>
+    </div>
+    <div class="field-group"><div class="field-label">Your Current Competency Level</div>
+      <select class="input-field" id="ev-level">
+        <option value="Aspiring">Aspiring — Understanding the concept</option>
+        <option value="Emerging">Emerging — Beginning to implement</option>
+        <option value="Developing" selected>Developing — Implementing with some consistency</option>
+        <option value="Transformational">Transformational — Systemic, sustained impact</option>
+      </select>
+    </div>
+    <div class="field-group"><div class="field-label">Date</div><input class="input-field" id="ev-date" type="date"></div>
+    <div style="display:flex;gap:9px;justify-content:flex-end;margin-top:16px">
+      <button class="btn btn-soft" onclick="closeModal('modal-add-evidence')">Cancel</button>
+      <button class="btn btn-primary" onclick="logEvidence()">Log Evidence</button>
+    </div>
+  </div>
+</div>
+
+<!-- Proficiency Help -->
+<div class="modal-overlay" id="modal-prof-help" onclick="closeModalOut(event,this)">
+  <div class="modal">
+    <div class="modal-title">How the Proficiency Analyzer Works <button class="modal-close" onclick="closeModal('modal-prof-help')">×</button></div>
+    <div style="font-size:13px;line-height:1.65;color:var(--text-mid)">
+      <p><strong style="color:var(--euca-deep)">1. Export from Infinite Campus</strong><br>In IC, go to your gradebook → Reports → Grade Export. Export as PDF, CSV, or Excel.</p>
+      <div class="divider"></div>
+      <p><strong style="color:var(--euca-deep)">2. Upload Here</strong><br>Drop the file in the upload zone. The tool reads it entirely in your browser — no data leaves your device until you optionally request AI analysis.</p>
+      <div class="divider"></div>
+      <p><strong style="color:var(--euca-deep)">3. Standard Detection</strong><br>The tool looks for Missouri Learning Standard codes (RL.1-3, OA, K.PS1.A, etc.) in the assignment names and maps them to proficiency levels 1–4.</p>
+      <div class="divider"></div>
+      <p><strong style="color:var(--euca-deep)">4. AI Analysis (optional)</strong><br>If you've set up your Worker URL in School Setup, you can request an AI-generated gap analysis. No student names are sent — only anonymous score distributions.</p>
+      <div class="divider"></div>
+      <p><strong style="color:var(--euca-deep)">Zero Data Retained</strong><br>When you close this tab, all uploaded data is gone. Nothing is logged, stored, or transmitted without your explicit action.</p>
+    </div>
+    <div style="text-align:right;margin-top:16px"><button class="btn btn-primary" onclick="closeModal('modal-prof-help')">Got It</button></div>
+  </div>
+</div>
+
+<!-- Standards Guide -->
+<div class="modal-overlay" id="modal-obs-help" onclick="closeModalOut(event,this)">
+  <div class="modal" style="max-width:680px">
+    <div class="modal-title">Missouri Teaching Standards Guide <button class="modal-close" onclick="closeModal('modal-obs-help')">×</button></div>
+    <div style="font-size:12.5px;line-height:1.7;color:var(--text-mid)">
+      <div id="mo-standards-guide"></div>
+    </div>
+    <div style="text-align:right;margin-top:16px"><button class="btn btn-primary" onclick="closeModal('modal-obs-help')">Close</button></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ─────────────────────────────────────────────
+// CONFIG & STATE
+// ─────────────────────────────────────────────
+let config = { school:'', district:'', principal:'', mascot:'', assessment:'iReady', worker:'', year:'2025–26', name:'Kylee Meyer' };
+let teachers = [];
+let evidenceLog = [];
+let coachingCycles = [];
+let activeTeacher = null;
+let sessionObs = {};
+
+const MO_STANDARDS = [
+  { num:1, name:'Content Knowledge', short:'Content Knowledge', indicators:['1.1 Content knowledge & academic language','1.2 Student engagement in subject matter','1.3 Disciplinary research & inquiry','1.4 Differentiated learning','1.5 Student demonstration of content'] },
+  { num:2, name:'Student Learning Growth', short:'Student Learning', indicators:['2.1 Student development','2.2 Student goals','2.3 Theory of learning','2.4 Human development','2.5 Cultural sensitivity','2.6 Diverse student populations'] },
+  { num:3, name:'Curriculum Implementation', short:'Curriculum', indicators:['3.1 Implementing the curriculum','3.2 Student-led learning','3.3 Student mastery of objectives'] },
+  { num:4, name:'Critical Thinking', short:'Critical Thinking', indicators:['4.1 Critical thinking strategies','4.2 Instructional resources','4.3 Cooperative & independent learning'] },
+  { num:5, name:'Positive Classroom Environment', short:'Classroom Env.', indicators:['5.1 Classroom management','5.2 Time, space & transitions','5.3 Student behavior'] },
+  { num:6, name:'Effective Communication', short:'Communication', indicators:['6.1 Verbal & non-verbal communication','6.2 Sensitivity to student differences','6.3 Student communication'] },
+  { num:7, name:'Student Assessment & Data Analysis', short:'Assessment & Data', indicators:['7.1 Formative & summative assessments','7.2 Teacher use of data','7.3 Student-led assessments','7.4 Grading & feedback','7.5 Communication of progress','7.6 Community resources & referral'] },
+  { num:8, name:'Self-Assessment & Improvement', short:'Self-Assessment', indicators:['8.1 Self-assessment & reflection','8.2 Professional learning','8.3 Ethical practices'] },
+  { num:9, name:'Professional Collaboration', short:'Collaboration', indicators:['9.1 School vision & mission','9.2 Collaborative learning','9.3 Teacher leadership'] },
+];
+
+const PRINCIPAL_STANDARDS = [
+  { num:1, name:'Visionary Leadership', desc:'Develops and implements a vision for the school to guide the learning of all students.', competencies:['Develops a clear, measurable and shared vision','Communicates the vision to stakeholders','Uses data to continuously improve the vision'] },
+  { num:2, name:'Instructional Leadership', desc:'Ensures a guaranteed and viable curriculum, guarantees effective instructional practice, coordinates assessments, and promotes professional learning.', competencies:['Aligns curriculum vertically and horizontally to standards','Supports research-based instructional practices','Ensures effective instructional design','Supports use of formative & summative assessments','Analyzes student data to improve learning','Designs professional learning'] },
+  { num:3, name:'Managerial Leadership', desc:'Implements operational systems, oversees personnel, and ensures equitable and strategic use of resources.', competencies:['Oversees school facility & grounds','Establishes routines & schedules','Recruits & screens candidates','Communicates expectations & guidelines','Provides intervention & support','Maintains compliance & records','Manages fiscal resources','Manages non-fiscal resources'] },
+  { num:4, name:'Relational Leadership', desc:'Establishes and maintains positive relationships with students, staff, families, and community to ensure student success.', competencies:['Ensures equity in teaching & learning','Integrates community resources for student welfare','Establishes ethical positive relationships','Promotes open dialogue & multiple perspectives','Maintains collaborative staff culture','Develops teacher leadership','Sustains family relationships','Monitors community support for school program'] },
+  { num:5, name:'Innovative Leadership', desc:'Models reflective practice, leads professional growth, and creates a culture of inquiry and continuous improvement.', competencies:['Leads professional development selection','Assumes leadership in professional networks','Models reflective practice','Uses intentional feedback system','Devotes time to school priorities','Establishes a culture of inquiry','Creates a culture of innovation'] },
+];
+
+const MLS_STANDARDS = [
+  // ELA
+  { subject:'ELA', code:'RL.1-3', desc:'Key Ideas & Details — Literature', grades:'K–5', l4:'Analyzes complex literary elements with textual evidence', l3:'Identifies key ideas and details in literature', l2:'Identifies some key details with support', l1:'Identifies basic story elements with significant support' },
+  { subject:'ELA', code:'RL.4-6', desc:'Craft & Structure — Literature', grades:'K–5', l4:'Analyzes author craft and perspective critically', l3:'Explains craft, structure, and point of view', l2:'Identifies some craft elements with support', l1:'Recognizes basic craft elements' },
+  { subject:'ELA', code:'RI.1-2', desc:'Key Ideas & Details — Informational Text', grades:'K–5', l4:'Analyzes complex informational texts with text evidence', l3:'Identifies main idea and key details in informational text', l2:'Identifies main idea with support', l1:'Identifies some details with significant support' },
+  { subject:'ELA', code:'RI.5-8', desc:'Craft, Structure & Integration — Informational', grades:'K–5', l4:'Evaluates author purpose and compares multiple sources', l3:'Explains structure, purpose, and text features', l2:'Identifies some text features with support', l1:'Recognizes basic text features' },
+  { subject:'ELA', code:'RF.2-3', desc:'Phonological Awareness & Phonics', grades:'K–3', l4:'Applies phonics rules fluently and independently', l3:'Decodes grade-level words using phonics patterns', l2:'Decodes some words with support', l1:'Recognizes some letter-sound correspondences' },
+  { subject:'ELA', code:'RF.4', desc:'Reading Fluency', grades:'K–5', l4:'Reads accurately and expressively; self-monitors comprehension', l3:'Reads grade-level text with accuracy and appropriate rate', l2:'Reads with some fluency; word-by-word reading', l1:'Reads with frequent errors and little fluency' },
+  { subject:'ELA', code:'W.1', desc:'Opinion / Argument Writing', grades:'K–5', l4:'Writes clearly structured, well-supported arguments', l3:'Writes opinions with clear reasons and organizational structure', l2:'States an opinion with limited support', l1:'States a preference with minimal elaboration' },
+  { subject:'ELA', code:'W.2', desc:'Informative / Explanatory Writing', grades:'K–5', l4:'Writes well-developed, structured explanatory texts', l3:'Writes informative text with organized facts and details', l2:'Writes some facts with limited structure', l1:'States topic with minimal development' },
+  { subject:'ELA', code:'W.3', desc:'Narrative Writing', grades:'K–5', l4:'Writes detailed, well-structured narratives with literary techniques', l3:'Writes narratives with events, details, and closure', l2:'Writes simple narratives with some sequencing', l1:'Writes minimal narrative with limited detail' },
+  { subject:'ELA', code:'L.1-2', desc:'Conventions of Standard English', grades:'K–5', l4:'Consistently uses grade-level grammar and conventions', l3:'Uses most grade-level conventions correctly', l2:'Uses some conventions with errors', l1:'Makes frequent convention errors' },
+  { subject:'ELA', code:'L.4-6', desc:'Vocabulary Acquisition & Use', grades:'K–5', l4:'Uses context and strategies to determine meaning; uses rich vocabulary', l3:'Uses context clues and reference materials for vocabulary', l2:'Determines word meaning with support', l1:'Recognizes some high-frequency words' },
+  // Math
+  { subject:'Math', code:'K.CC/NBT', desc:'Counting, Cardinality & Number in Base Ten — K', grades:'K', l4:'Fluently counts to 100; understands place value concepts', l3:'Counts to 100 by 1s and 10s; understands tens and ones', l2:'Counts with some accuracy; emerging place value', l1:'Counts to 20 with support' },
+  { subject:'Math', code:'NBT', desc:'Number & Operations in Base Ten', grades:'1–5', l4:'Fluently applies place value understanding in all operations', l3:'Uses place value to read, write, and compute', l2:'Applies some place value concepts with support', l1:'Recognizes digits; limited place value understanding' },
+  { subject:'Math', code:'OA', desc:'Operations & Algebraic Thinking', grades:'K–5', l4:'Solves complex multi-step problems; explains reasoning', l3:'Solves one and two-step problems using operations', l2:'Solves simple problems with support', l1:'Recognizes operation symbols; solves with significant support' },
+  { subject:'Math', code:'NF', desc:'Number & Operations — Fractions', grades:'3–5', l4:'Compares, adds, subtracts, multiplies fractions fluently', l3:'Understands fractions as parts of a whole; compares', l2:'Identifies basic fractions with support', l1:'Recognizes half and quarter with support' },
+  { subject:'Math', code:'MD', desc:'Measurement & Data', grades:'K–5', l4:'Represents and interprets data accurately; applies measurement', l3:'Measures, collects, and represents data', l2:'Measures with some accuracy; basic data representation', l1:'Identifies tools; limited measurement understanding' },
+  { subject:'Math', code:'G', desc:'Geometry', grades:'K–5', l4:'Analyzes and classifies shapes; understands area and volume', l3:'Identifies and classifies 2D and 3D shapes; understands area', l2:'Names some shapes; limited area understanding', l1:'Recognizes basic shapes with support' },
+  // Science
+  { subject:'Science', code:'K-5.PS1', desc:'Physical Science — Matter & Interactions', grades:'K–5', l4:'Investigates and explains properties of matter systematically', l3:'Describes physical properties and changes in matter', l2:'Identifies some properties with support', l1:'Observes basic properties with significant support' },
+  { subject:'Science', code:'K-5.PS2', desc:'Physical Science — Forces & Motion', grades:'K–5', l4:'Investigates cause/effect of forces; designs solutions', l3:'Describes effects of pushes, pulls, and gravity', l2:'Identifies some force examples with support', l1:'Observes motion with support' },
+  { subject:'Science', code:'K-5.LS1', desc:'Life Science — Organisms & Processes', grades:'K–5', l4:'Analyzes organism needs and life cycles; makes comparisons', l3:'Describes what organisms need to survive and life cycles', l2:'Identifies some needs and structures with support', l1:'Names basic organisms with support' },
+  { subject:'Science', code:'K-5.ESS', desc:'Earth & Space Science', grades:'K–5', l4:'Analyzes Earth systems and patterns with evidence', l3:'Describes weather patterns, seasons, and Earth features', l2:'Identifies some weather patterns with support', l1:'Observes weather with support' },
+  { subject:'Science', code:'K-5.ETS', desc:'Engineering, Technology & Application of Science', grades:'K–5', l4:'Designs and iterates solutions using engineering process', l3:'Applies engineering design process to solve problems', l2:'Identifies steps in design process with support', l1:'Recognizes technology with support' },
+  // Social Studies
+  { subject:'Social Studies', code:'PC.1', desc:'Constitutional Democracy — Principles & Documents', grades:'K–5', l4:'Analyzes constitutional principles; applies to current events', l3:'Explains principles of democracy and constitutional government', l2:'Identifies some government principles with support', l1:'Recognizes basic rules and laws' },
+  { subject:'Social Studies', code:'SS.2', desc:'Governance Systems — Purposes & Roles', grades:'K–5', l4:'Evaluates governmental systems and their effectiveness', l3:'Explains purposes and levels of government', l2:'Identifies roles of government with support', l1:'Names basic community helpers and rules' },
+  { subject:'Social Studies', code:'SS.3', desc:'History — Missouri & United States', grades:'K–5', l4:'Analyzes historical events; draws conclusions about continuity/change', l3:'Describes historical events and their significance', l2:'Identifies historical people and events with support', l1:'Recognizes basic historical figures' },
+  { subject:'Social Studies', code:'SS.4', desc:'Economics — Concepts & Principles', grades:'K–5', l4:'Analyzes economic systems and decision-making', l3:'Explains basic economic concepts: scarcity, needs vs wants', l2:'Identifies some economic concepts with support', l1:'Distinguishes between needs and wants' },
+  { subject:'Social Studies', code:'RI.6', desc:'Relationships & Interactions — Cultural & Geographic', grades:'K–5', l4:'Analyzes cultural interactions and geographic influences', l3:'Describes cultural similarities/differences and geographic features', l2:'Identifies some geographic features with support', l1:'Names some map features' },
+  { subject:'Social Studies', code:'TS.7', desc:'Tools of Social Science Inquiry', grades:'K–5', l4:'Uses multiple sources to create evidence-based products', l3:'Selects and analyzes sources for social studies inquiry', l2:'Uses sources with guidance', l1:'Identifies social studies tools with support' },
+];
+
+const HATTIE_STRATEGIES = [
+  { name:'Teacher Feedback', effect:'d=0.73', desc:'Timely, specific feedback on task performance dramatically increases achievement. Focus on the work, not the person.', standard:'ST7, ST8', tag:'hattie' },
+  { name:'Reciprocal Teaching', effect:'d=0.74', desc:'Students take turns as teacher — summarizing, questioning, clarifying, predicting. Highly effective for reading comprehension.', standard:'ST1, ST4', tag:'hattie' },
+  { name:'Instructional Quality', effect:'d=1.00', desc:'Teacher clarity, guided interaction, monitoring learning, attending to affective elements. The foundation of effective teaching.', standard:'ST1–ST5', tag:'hattie' },
+  { name:'Direct Instruction', effect:'d=0.60', desc:'Structured, explicit teaching of skills with guided practice and frequent checking for understanding. Most effective when combined with feedback.', standard:'ST1, ST3', tag:'hattie' },
+  { name:'Spaced Practice', effect:'d=0.65', desc:'Spreading practice across time increases retention significantly. Distributed review outperforms massed practice.', standard:'ST7', tag:'hattie' },
+  { name:'Self-Reported Grades', effect:'d=1.44', desc:'Students who understand their own learning trajectories and performance expectations achieve at higher levels.', standard:'ST7, ST8', tag:'hattie' },
+];
+
+const MARZANO_STRATEGIES = [
+  { name:'Setting Objectives & Providing Feedback', effect:'Effect Size 0.61', desc:'Students who know the learning goal and receive specific feedback on their progress consistently outperform those who do not.', standard:'ST3, ST7', tag:'marzano' },
+  { name:'Nonlinguistic Representations', effect:'Effect Size 0.75', desc:'Graphic organizers, concept maps, pictures, and movement help students encode and retrieve content. Maps to RI standards.', standard:'ST1, ST4', tag:'marzano' },
+  { name:'Cooperative Learning', effect:'Effect Size 0.59', desc:'Structured group work with individual accountability increases engagement and mastery. Pair with accountability artifacts.', standard:'ST4, ST5', tag:'marzano' },
+  { name:'Identifying Similarities & Differences', effect:'Effect Size 1.32', desc:'Comparison, classification, metaphor, and analogy are among the highest-yield strategies. Use Venn diagrams, T-charts.', standard:'ST1, ST4', tag:'marzano' },
+  { name:'Homework & Practice', effect:'Effect Size 0.77', desc:'Deliberate practice with specific skill focus and feedback is essential. Unguided homework has low impact.', standard:'ST3, ST7', tag:'marzano' },
+  { name:'Questions, Cues & Advance Organizers', effect:'Effect Size 0.59', desc:'Well-crafted questions that focus on critical elements and activate prior knowledge increase comprehension significantly.', standard:'ST1, ST4', tag:'marzano' },
+];
+
+const TLAC_STRATEGIES = [
+  { name:'Cold Call (Technique 22)', effect:'High Impact', desc:'Call on students regardless of hand-raising. Normalizes participation, maintains accountability during all learning phases. Maps to MO Std 5.2.', standard:'ST4, ST5', tag:'tlac' },
+  { name:'No Opt Out (Technique 1)', effect:'High Impact', desc:'A sequence that ends with the student giving the right answer — even if they must repeat it after a peer. Maintains high expectations.', standard:'ST1, ST5', tag:'tlac' },
+  { name:'Right Is Right (Technique 2)', effect:'High Impact', desc:'Set and defend a high standard of correctness. Only accept complete, accurate answers. Prevents mediocre responses from becoming the norm.', standard:'ST1, ST4', tag:'tlac' },
+  { name:'Stretch It (Technique 3)', effect:'High Impact', desc:'After a right answer, extend with follow-up questions. Never let learning stop at the first correct response.', standard:'ST4', tag:'tlac' },
+  { name:'The 4 Ms (Technique 7)', effect:'Planning', desc:'Great objectives are Manageable, Measurable, Made first, and Most important. Anchor every lesson to a clear, student-facing learning goal.', standard:'ST3', tag:'tlac' },
+  { name:'Double Plan (Technique 10)', effect:'Planning', desc:'Plan what students will be doing at every phase of the lesson — not just what the teacher is saying. Maximizes on-task time.', standard:'ST3, ST5', tag:'tlac' },
+];
+
+// ─────────────────────────────────────────────
+// NAVIGATION
+// ─────────────────────────────────────────────
+const panelTitles = { dashboard:'Good morning, Kylee', proficiency:'Class Proficiency Analyzer', eval:'Teacher Evaluation Tracker', coaching:'Instructional Coaching Hub', growth:'My Principal Growth Tracker', standards:'Standards Library', chat:'Ask AI Coach', privacy:'Privacy & Data Protection', setup:'School Setup' };
+
+function nav(id, el) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('panel-' + id).classList.add('active');
+  document.getElementById('topbar-title').textContent = panelTitles[id];
+  if (el) el.classList.add('active');
+  if (id === 'standards') renderStandards('all');
+  if (id === 'growth') renderPrincipalStandards();
+  if (id === 'eval') renderRoster();
+  if (id === 'dashboard') updateDashboard();
+}
+
+// ─────────────────────────────────────────────
+// CONFIG
+// ─────────────────────────────────────────────
+function saveConfig() {
+  config.school = document.getElementById('cfg-school').value;
+  config.district = document.getElementById('cfg-district').value;
+  config.principal = document.getElementById('cfg-principal').value;
+  config.mascot = document.getElementById('cfg-mascot').value;
+  config.assessment = document.getElementById('cfg-assessment').value;
+  config.worker = document.getElementById('cfg-worker').value.trim();
+  config.year = document.getElementById('cfg-year').value;
+  config.name = document.getElementById('cfg-name').value;
+  try { localStorage.setItem('kylee_config', JSON.stringify(config)); } catch(e){}
+  document.getElementById('chip-school').textContent = config.school || '—';
+  document.getElementById('chip-year').textContent = config.year || '2025–26';
+  showToast('Configuration saved ✓');
+}
+
+function loadConfig() {
+  try {
+    const saved = localStorage.getItem('kylee_config');
+    if (saved) {
+      config = { ...config, ...JSON.parse(saved) };
+      document.getElementById('cfg-school').value = config.school || '';
+      document.getElementById('cfg-district').value = config.district || '';
+      document.getElementById('cfg-principal').value = config.principal || '';
+      document.getElementById('cfg-mascot').value = config.mascot || '';
+      document.getElementById('cfg-assessment').value = config.assessment || '';
+      document.getElementById('cfg-worker').value = config.worker || '';
+      document.getElementById('cfg-year').value = config.year || '2025–26';
+      document.getElementById('cfg-name').value = config.name || 'Kylee Meyer';
+      document.getElementById('chip-school').textContent = config.school || '—';
+      document.getElementById('chip-year').textContent = config.year || '2025–26';
+    }
+  } catch(e){}
+}
+
+// ─────────────────────────────────────────────
+// AI
+// ─────────────────────────────────────────────
+async function callAI(systemPrompt, userMessage, targetEl) {
+  if (!config.worker) {
+    if (targetEl) targetEl.innerHTML = '<div class="ai-box">⚠️ No Worker URL configured. Go to School Setup and paste your Cloudflare Worker URL to enable AI features.</div>';
+    return null;
+  }
+  if (targetEl) targetEl.innerHTML = '<div class="ai-box"><span class="spinner"></span>Generating...</div>';
+  try {
+    const res = await fetch(config.worker, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ system: systemPrompt, messages: [{ role: 'user', content: userMessage }] })
+    });
+    const data = await res.json();
+    const text = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('');
+    if (targetEl && text) {
+      targetEl.innerHTML = `<div class="ai-box"><div style="white-space:pre-wrap;font-size:12.5px">${text}</div></div>`;
+    }
+    return text;
+  } catch (e) {
+    if (targetEl) targetEl.innerHTML = '<div class="ai-box">⚠️ AI request failed. Check your Worker URL in School Setup.</div>';
+    return null;
+  }
+}
+
+const AI_SYSTEM = `You are an expert Missouri educational consultant and instructional coach. You help assistant principals with teacher evaluation, instructional coaching, proficiency data analysis, and professional growth — all grounded in Missouri DESE standards, the OEQ educator evaluation framework, and research from Hattie's Visible Learning, Marzano's Art and Science of Teaching, and Teach Like a Champion by Doug Lemov.
+
+Missouri Teaching Standards (1-9): Content Knowledge, Student Learning Growth, Curriculum Implementation, Critical Thinking, Positive Classroom Environment, Effective Communication, Student Assessment & Data Analysis, Self-Assessment & Improvement, Professional Collaboration.
+
+Missouri Principal Standards: (1) Visionary, (2) Instructional, (3) Managerial, (4) Relational, (5) Innovative Leadership.
+
+Competency levels: Aspiring → Emerging → Developing → Transformational.
+Teacher effectiveness ratings: Ineffective, Minimally Effective, Effective, Highly Effective.
+
+Be specific, actionable, professional, and warm. Use Missouri-specific language.`;
+
+// ─────────────────────────────────────────────
+// MODULE 1: PROFICIENCY
+// ─────────────────────────────────────────────
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+const MLS_MAP = {
+  'rl.1':'RL.1-3','rl.2':'RL.1-3','rl.3':'RL.1-3','rl.4':'RL.4-6','rl.5':'RL.4-6','rl.6':'RL.4-6',
+  'ri.1':'RI.1-2','ri.2':'RI.1-2','ri.5':'RI.5-8','ri.6':'RI.5-8','ri.7':'RI.5-8','ri.8':'RI.5-8',
+  'rf.2':'RF.2-3','rf.3':'RF.2-3','rf.4':'RF.4',
+  'w.1':'W.1','w.2':'W.2','w.3':'W.3',
+  'l.1':'L.1-2','l.2':'L.1-2','l.4':'L.4-6','l.5':'L.4-6','l.6':'L.4-6',
+  'oa':'OA','nbt':'NBT','nf':'NF','md':'MD','geo':'G','geometry':'G','fractions':'NF',
+  'ps1':'K-5.PS1','ps2':'K-5.PS2','ls1':'K-5.LS1','ess':'K-5.ESS','ets':'K-5.ETS',
+  'pc.1':'PC.1','ss.2':'SS.2','ss.3':'SS.3','ss.4':'SS.4','ri.6ss':'RI.6','ts.7':'TS.7',
+};
+
+async function handleProfFile(file) {
+  if (!file) return;
+  document.getElementById('prof-empty').style.display = 'none';
+  document.getElementById('prof-results').style.display = 'none';
+  document.getElementById('prof-processing').style.display = 'block';
+
+  let text = '';
+  try {
+    if (file.name.endsWith('.pdf')) {
+      const ab = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: ab }).promise;
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const tc = await page.getTextContent();
+        text += tc.items.map(s => s.str).join(' ') + '\n';
+      }
+    } else if (file.name.match(/\.xlsx?|\.csv/i)) {
+      const ab = await file.arrayBuffer();
+      const wb = XLSX.read(ab, { type: 'array' });
+      wb.SheetNames.forEach(sn => {
+        const ws = wb.Sheets[sn];
+        text += XLSX.utils.sheet_to_csv(ws) + '\n';
+      });
+    }
+    analyzeText(text, file.name);
+  } catch(e) {
+    document.getElementById('prof-processing').style.display = 'none';
+    document.getElementById('prof-empty').style.display = 'block';
+    showToast('Could not parse file. Try CSV or ensure PDF is text-based.');
+  }
+}
+
+function analyzeText(text, fname) {
+  const lines = text.split(/[\n\r]+/).filter(l => l.trim());
+  const gradeMap = {};
+  const stdMap = {};
+
+  lines.forEach(line => {
+    const gradeMatch = line.match(/\b([K1-5])(?:th|st|nd|rd)?\s*(?:Grade|Gr\.?)/i);
+    const grade = gradeMatch ? gradeMatch[1].toUpperCase() : 'All';
+
+    // Find MLS code
+    let mlsCode = null;
+    const lower = line.toLowerCase();
+    for (const [key, code] of Object.entries(MLS_MAP)) {
+      if (lower.includes(key)) { mlsCode = code; break; }
+    }
+    if (!mlsCode) return;
+
+    // Find score
+    const scoreMatch = line.match(/(\d+(?:\.\d+)?)\s*%?|(\d+)\s*\/\s*(\d+)/);
+    if (!scoreMatch) return;
+    let score = parseFloat(scoreMatch[1]);
+    if (scoreMatch[2] && scoreMatch[3]) score = (parseInt(scoreMatch[2]) / parseInt(scoreMatch[3])) * 100;
+    if (isNaN(score) || score > 100) return;
+
+    const level = score >= 80 ? 4 : score >= 60 ? 3 : score >= 40 ? 2 : 1;
+    const key = `${grade}|${mlsCode}`;
+    if (!stdMap[key]) stdMap[key] = { grade, code: mlsCode, counts: [0,0,0,0], total: 0 };
+    stdMap[key].counts[level-1]++;
+    stdMap[key].total++;
+    if (!gradeMap[grade]) gradeMap[grade] = [];
+    if (!gradeMap[grade].includes(mlsCode)) gradeMap[grade].push(mlsCode);
+  });
+
+  document.getElementById('prof-processing').style.display = 'none';
+
+  if (Object.keys(stdMap).length === 0) {
+    showToast('No MLS standards detected. Make sure assignment names include standard codes.');
+    document.getElementById('prof-empty').style.display = 'block';
+    return;
+  }
+
+  document.getElementById('prof-results').style.display = 'block';
+  renderProfTabs(gradeMap, stdMap);
+  updateBadge('badge-prof', Object.keys(stdMap).length);
+}
+
+function renderProfTabs(gradeMap, stdMap) {
+  const tabEl = document.getElementById('prof-grade-tabs');
+  const grades = ['All', ...Object.keys(gradeMap).sort()];
+  tabEl.innerHTML = grades.map((g, i) => `<div class="tab ${i===0?'active':''}" onclick="filterProfGrade('${g}',this)">${g === 'All' ? 'All Grades' : 'Grade ' + g}</div>`).join('');
+  window._stdMap = stdMap;
+  window._gradeMap = gradeMap;
+  renderProfGrid('All', stdMap);
+}
+
+function filterProfGrade(grade, el) {
+  document.querySelectorAll('#prof-grade-tabs .tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  renderProfGrid(grade, window._stdMap);
+}
+
+function renderProfGrid(grade, stdMap) {
+  const grid = document.getElementById('prof-results-grid');
+  const entries = Object.values(stdMap).filter(e => grade === 'All' || e.grade === grade);
+  if (!entries.length) { grid.innerHTML = '<div style="color:var(--muted);font-size:12.5px">No data for this grade.</div>'; return; }
+
+  const sorted = entries.sort((a,b) => (a.counts[0]/Math.max(a.total,1)) - (b.counts[0]/Math.max(b.total,1))).reverse();
+  grid.innerHTML = `<div>${sorted.slice(0, Math.ceil(sorted.length/2)).map(s => stdCardHTML(s)).join('')}</div><div>${sorted.slice(Math.ceil(sorted.length/2)).map(s => stdCardHTML(s)).join('')}</div>`;
+
+  // AI analysis for top gap
+  const topGap = sorted[0];
+  if (topGap) {
+    const pct1 = Math.round((topGap.counts[0]/topGap.total)*100);
+    const pct2 = Math.round((topGap.counts[1]/topGap.total)*100);
+    const aiSec = document.getElementById('prof-ai-section');
+    const stdInfo = MLS_STANDARDS.find(s => s.code === topGap.code) || {};
+    callAI(AI_SYSTEM, 
+      `Grade ${topGap.grade} class data shows ${topGap.code} (${stdInfo.desc || topGap.code}): ${pct1}% at Level 1, ${pct2}% at Level 2, ${Math.round((topGap.counts[2]/topGap.total)*100)}% at Level 3, ${Math.round((topGap.counts[3]/topGap.total)*100)}% at Level 4. Provide: 1) Root cause hypothesis 2) Specific intervention recommendation 3) Research connection to Hattie, Marzano, or TLAC 4) Suggested coaching conversation focus. Be concise — 3-4 sentences max per section.`,
+      aiSec);
+  }
+}
+
+function stdCardHTML(s) {
+  const t = s.total;
+  const p = i => t ? Math.round((s.counts[i]/t)*100) : 0;
+  const stdInfo = MLS_STANDARDS.find(x => x.code === s.code) || {};
+  return `<div class="std-card">
+    <div class="std-code">${s.code} · Grade ${s.grade}</div>
+    <div class="std-desc">${stdInfo.desc || s.code}</div>
+    <div class="level-row">
+      <div class="lp l4">L4 · ${p(3)}%</div><div class="lp l3">L3 · ${p(2)}%</div><div class="lp l2">L2 · ${p(1)}%</div><div class="lp l1">L1 · ${p(0)}%</div>
+    </div>
+  </div>`;
+}
+
+// Drag and drop
+const dz = document.getElementById('prof-drop-zone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dragover'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('dragover'); if (e.dataTransfer.files[0]) handleProfFile(e.dataTransfer.files[0]); });
+
+// ─────────────────────────────────────────────
+// MODULE 2: EVAL
+// ─────────────────────────────────────────────
+function addTeacher() {
+  const name = document.getElementById('at-name').value.trim();
+  if (!name) { showToast('Enter teacher name'); return; }
+  const teacher = {
+    id: Date.now(),
+    name,
+    grade: document.getElementById('at-grade').value,
+    subject: document.getElementById('at-subject').value,
+    track: document.getElementById('at-track').value,
+    obsType: document.getElementById('at-obstype').value,
+    due: document.getElementById('at-due').value,
+    observations: [],
+    stdRatings: {},
+    overallRating: null,
+  };
+  teachers.push(teacher);
+  document.getElementById('at-name').value = '';
+  document.getElementById('at-subject').value = '';
+  closeModal('modal-add-teacher');
+  renderRoster();
+  updateDashboard();
+  updateBadge('badge-eval', teachers.length);
+  showToast(`${name} added ✓`);
+}
+
+function renderRoster() {
+  const el = document.getElementById('teacher-roster');
+  if (!teachers.length) {
+    el.innerHTML = '<div style="color:var(--muted);font-size:12.5px;text-align:center;padding:30px;border:1.5px dashed var(--border);border-radius:12px">No teachers added yet.<br><span style="font-size:11px">Click "+ Add Teacher" above.</span></div>';
+    return;
+  }
+  el.innerHTML = teachers.map(t => {
+    const statusClass = evalStatus(t).cls;
+    const statusLabel = evalStatus(t).label;
+    return `<div class="t-row" onclick="openObsPanel(${t.id})">
+      <div class="t-av" style="${statusClass === 'st-over' ? 'background:linear-gradient(135deg,#D47070,#B85555)' : statusClass === 'st-due' ? 'background:linear-gradient(135deg,#E0A060,#C4863A)' : ''}">${t.name.split(' ').map(w=>w[0]).join('').slice(0,2)}</div>
+      <div><div class="t-name">${t.name}</div><div class="t-sub">${t.grade !== 'Multi' ? 'Grade ' + t.grade : 'Multi-Grade'} · ${t.subject || 'All'} · ${t.track === 'new' ? 'New Teacher' : 'Veteran'} · ${t.obsType === 'co' ? 'Co-Obs' : 'Solo'}</div></div>
+      <div class="t-status ${statusClass}">${statusLabel}</div>
+    </div>`;
+  }).join('');
+}
+
+function evalStatus(t) {
+  if (!t.due) return { cls:'st-ok', label:'No Date Set' };
+  const due = new Date(t.due);
+  const today = new Date();
+  const diff = Math.ceil((due - today) / (1000*60*60*24));
+  if (diff < 0) return { cls:'st-over', label:'Overdue' };
+  if (diff <= 14) return { cls:'st-due', label:`Due in ${diff}d` };
+  return { cls:'st-ok', label:'On Track' };
+}
+
+function openObsPanel(tid) {
+  activeTeacher = teachers.find(t => t.id === tid);
+  if (!activeTeacher) return;
+  showModal('modal-observation');
+  document.getElementById('obs-modal-title').textContent = `Observation — ${activeTeacher.name}`;
+  document.getElementById('obs-date').valueAsDate = new Date();
+  document.getElementById('obs-ai-output').innerHTML = '';
+
+  // Build standards checklist
+  const cl = document.getElementById('obs-standards-checklist');
+  cl.innerHTML = MO_STANDARDS.map(s =>
+    `<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text);cursor:pointer">
+      <input type="checkbox" class="obs-std-check" value="${s.num}" style="accent-color:var(--euca)"> Std ${s.num}: ${s.short}
+    </label>`
+  ).join('');
+}
+
+function saveObservation() {
+  if (!activeTeacher) return;
+  const notes = document.getElementById('obs-notes').value.trim();
+  const date = document.getElementById('obs-date').value;
+  const duration = document.getElementById('obs-duration').value;
+  const checkedStds = [...document.querySelectorAll('.obs-std-check:checked')].map(c => parseInt(c.value));
+
+  activeTeacher.observations.push({ date, duration, notes, standards: checkedStds, timestamp: Date.now() });
+  closeModal('modal-observation');
+  document.getElementById('obs-notes').value = '';
+  showToast(`Observation saved for ${activeTeacher.name} ✓`);
+  renderObsPanel();
+}
+
+function renderObsPanel() {
+  if (!activeTeacher) return;
+  const el = document.getElementById('obs-panel');
+  el.innerHTML = `
+    <div class="card">
+      <div class="card-hd"><div class="card-title">${activeTeacher.name} — ${activeTeacher.observations.length} Obs.</div><button class="btn btn-primary btn-sm" onclick="openObsPanel(${activeTeacher.id})">+ Add Obs</button></div>
+      <div class="card-bd">
+        ${activeTeacher.observations.length === 0 ? '<div style="color:var(--muted);font-size:12px;text-align:center;padding:12px">No observations yet.</div>' :
+          activeTeacher.observations.map((o,i) => `
+            <div style="padding:9px 0;border-bottom:1px solid var(--border-soft)">
+              <div style="font-size:12.5px;font-weight:700;color:var(--text)">${o.date} · ${o.duration}</div>
+              <div style="font-size:12px;color:var(--text-mid);margin-top:3px;line-height:1.45">${o.notes.substring(0,120)}${o.notes.length > 120 ? '...' : ''}</div>
+              <div class="chip-row">${o.standards.map(s => `<span class="chip-sm">Std ${s}</span>`).join('')}</div>
+            </div>`).join('')}
+        <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-primary btn-sm" onclick="generateSummative()">Generate Summative Draft</button>
+          <button class="btn btn-soft btn-sm" onclick="openObsPanel(${activeTeacher.id})">+ New Observation</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function generateObsFeedback() {
+  if (!activeTeacher) return;
+  const notes = document.getElementById('obs-notes').value;
+  if (!notes.trim()) { showToast('Add observation notes first'); return; }
+  const checkedStds = [...document.querySelectorAll('.obs-std-check:checked')].map(c => `Standard ${c.value}: ${MO_STANDARDS.find(s=>s.num===parseInt(c.value))?.name}`).join(', ');
+  const track = activeTeacher.track === 'new' ? 'new teacher (Year 1-2)' : 'veteran teacher';
+  const prompt = `I observed a ${track} in Grade ${activeTeacher.grade} (${activeTeacher.subject}) for ${document.getElementById('obs-duration').value}. Observation type: ${activeTeacher.obsType === 'co' ? 'co-observation with principal' : 'solo'}. Standards observed: ${checkedStds || 'not specified'}. Notes: "${notes}". Please generate: 1) A professional post-observation feedback summary (3-4 sentences) 2) One specific strength with evidence 3) One growth focus connected to Missouri teaching standards 4) A Marzano or TLAC strategy recommendation. Format clearly with headers.`;
+  await callAI(AI_SYSTEM, prompt, document.getElementById('obs-ai-output'));
+}
+
+async function generateSummative() {
+  if (!activeTeacher || !activeTeacher.observations.length) return;
+  const obsText = activeTeacher.observations.map((o,i) => `Observation ${i+1} (${o.date}, ${o.duration}): ${o.notes}`).join('\n\n');
+  const prompt = `Generate a summative evaluation narrative for a ${activeTeacher.track === 'new' ? 'Year 1-2' : 'veteran'} teacher in Grade ${activeTeacher.grade} (${activeTeacher.subject}). Based on ${activeTeacher.observations.length} observations:\n\n${obsText}\n\nProvide: 1) Overall effectiveness summary (4-5 sentences) 2) Rating recommendation (Ineffective/Minimally Effective/Effective/Highly Effective) with justification 3) Top 2 growth focus indicators for next year's plan. Use Missouri OEQ language throughout.`;
+  const summEl = document.getElementById('obs-panel');
+  const outputDiv = document.createElement('div');
+  summEl.appendChild(outputDiv);
+  await callAI(AI_SYSTEM, prompt, outputDiv);
+}
+
+// ─────────────────────────────────────────────
+// MODULE 3: COACHING
+// ─────────────────────────────────────────────
+function addCoachingCycle() {
+  const teacher = document.getElementById('nc-teacher').value.trim();
+  if (!teacher) { showToast('Enter teacher description'); return; }
+  const cycle = {
+    id: Date.now(),
+    teacher,
+    focus: document.getElementById('nc-focus').value,
+    research: document.getElementById('nc-research').value,
+    obsCount: parseInt(document.getElementById('nc-obs-count').value),
+    start: document.getElementById('nc-start').value,
+    obsCompleted: 0,
+    status: 'Active',
+  };
+  coachingCycles.push(cycle);
+  closeModal('modal-new-cycle');
+  document.getElementById('nc-teacher').value = '';
+  document.getElementById('nc-focus').value = '';
+  renderCoachingCycles();
+  updateDashboard();
+  showToast('Coaching cycle started ✓');
+}
+
+function renderCoachingCycles() {
+  const el = document.getElementById('coaching-cycles-list');
+  if (!coachingCycles.length) {
+    el.innerHTML = '<div style="color:var(--muted);font-size:12.5px;text-align:center;padding:30px;border:1.5px dashed var(--border);border-radius:12px">No active cycles.<br><span style="font-size:11px">Click "+ New Coaching Cycle" to begin.</span></div>';
+    return;
+  }
+  el.innerHTML = coachingCycles.map(c => `
+    <div class="coach-card">
+      <div class="coach-hd">
+        <div><div style="font-size:13px;font-weight:700;color:var(--text)">${c.teacher} — ${c.focus || 'Coaching Cycle'}</div><div style="font-size:10.5px;color:var(--muted)">Obs ${c.obsCompleted}/${c.obsCount} · ${c.start || 'No date'}</div></div>
+        <span class="tag tag-green">Active</span>
+      </div>
+      <div class="coach-bd">
+        <div class="chip-row">
+          <span class="res-tag ${c.research === 'hattie' ? 'rt-hattie' : c.research === 'marzano' ? 'rt-marzano' : c.research === 'tlac' ? 'rt-tlac' : 'rt-hattie'}">
+            ${c.research === 'all' ? 'Hattie + Marzano + TLAC' : c.research.charAt(0).toUpperCase() + c.research.slice(1)}
+          </span>
+        </div>
+        <div style="margin-top:10px;display:flex;gap:7px">
+          <button class="btn btn-soft btn-sm" onclick="coachingAI(${c.id})">✦ Get Strategy</button>
+          <button class="btn btn-soft btn-sm" onclick="c_obs(${c.id})">+ Log Obs</button>
+        </div>
+        <div id="coaching-ai-${c.id}" style="margin-top:8px"></div>
+      </div>
+    </div>`).join('');
+}
+
+async function coachingAI(cid) {
+  const c = coachingCycles.find(x => x.id === cid);
+  if (!c) return;
+  const research = c.research === 'all' ? 'Hattie, Marzano, and Teach Like a Champion' : c.research === 'hattie' ? 'Hattie Visible Learning' : c.research === 'marzano' ? 'Marzano Art & Science of Teaching' : 'Teach Like a Champion by Lemov';
+  await callAI(AI_SYSTEM,
+    `I'm coaching ${c.teacher} with a focus on: "${c.focus}". This is observation ${c.obsCompleted + 1} of ${c.obsCount}. Please recommend: 1) One specific strategy from ${research} (include effect size or technique number) 2) A coaching question to open the conversation 3) What to look for in the next observation. Be concise.`,
+    document.getElementById(`coaching-ai-${cid}`));
+}
+
+function c_obs(cid) {
+  const c = coachingCycles.find(x => x.id === cid);
+  if (c && c.obsCompleted < c.obsCount) { c.obsCompleted++; renderCoachingCycles(); showToast('Observation logged ✓'); }
+}
+
+function findStrategy() {
+  const query = document.getElementById('strategy-search').value.toLowerCase();
+  if (!query.trim()) return;
+  const allStrategies = [...HATTIE_STRATEGIES, ...MARZANO_STRATEGIES, ...TLAC_STRATEGIES];
+  const relevant = allStrategies.filter(s =>
+    s.name.toLowerCase().includes(query) || s.desc.toLowerCase().includes(query) || query.split(' ').some(w => s.desc.toLowerCase().includes(w))
+  ).slice(0, 4);
+
+  if (relevant.length === 0) {
+    document.getElementById('strategy-results').innerHTML = '<div style="color:var(--muted);font-size:12.5px">No matching strategies. Try different keywords.</div>';
+    // Fall back to AI
+    callAI(AI_SYSTEM, `I observed: "${document.getElementById('strategy-search').value}". Recommend 2 specific coaching strategies from Hattie, Marzano, or Teach Like a Champion to address this. Include effect size or technique number. Be specific and actionable.`,
+      document.getElementById('strategy-results'));
+    return;
+  }
+
+  document.getElementById('strategy-results').innerHTML = relevant.map(s => `
+    <div class="coach-card">
+      <div class="coach-hd"><div style="font-size:12.5px;font-weight:700;color:var(--text)">${s.name} · ${s.effect}</div><span class="res-tag rt-${s.tag}">${s.tag.charAt(0).toUpperCase()+s.tag.slice(1)}</span></div>
+      <div class="coach-bd">${s.desc}</div>
+    </div>`).join('');
+}
+
+async function generateEmail() {
+  const teacher = document.getElementById('em-teacher').value;
+  const strength = document.getElementById('em-strength').value;
+  const growth = document.getElementById('em-growth').value;
+  const tone = document.getElementById('em-tone').value;
+  if (!strength.trim()) { showToast('Describe what you observed'); return; }
+  await callAI(AI_SYSTEM,
+    `Write a post-observation feedback email to ${teacher || 'a teacher'}. Tone: ${tone}. Strength observed: "${strength}". Growth focus: "${growth}". Include: 1) Subject line 2) Opening that names the specific strength 3) Growth area framed positively 4) One specific strategy recommendation 5) Follow-up question. Professional length — 150-200 words.`,
+    document.getElementById('email-output'));
+}
+
+// ─────────────────────────────────────────────
+// MODULE 4: GROWTH
+// ─────────────────────────────────────────────
+function logEvidence() {
+  const desc = document.getElementById('ev-desc').value.trim();
+  if (!desc) { showToast('Describe what you did'); return; }
+  const item = {
+    id: Date.now(),
+    desc,
+    standard: parseInt(document.getElementById('ev-standard').value),
+    standardName: PRINCIPAL_STANDARDS[parseInt(document.getElementById('ev-standard').value)-1]?.name,
+    level: document.getElementById('ev-level').value,
+    date: document.getElementById('ev-date').value || new Date().toISOString().split('T')[0],
+  };
+  evidenceLog.push(item);
+  document.getElementById('ev-desc').value = '';
+  closeModal('modal-add-evidence');
+  renderEvidenceLog();
+  renderPrincipalStandards();
+  updateDashboard();
+  showToast('Evidence logged ✓');
+}
+
+function renderEvidenceLog() {
+  const el = document.getElementById('evidence-log-list');
+  if (!evidenceLog.length) {
+    el.innerHTML = '<div style="color:var(--muted);font-size:12px;text-align:center;padding:16px">No evidence logged yet.</div>';
+    return;
+  }
+  el.innerHTML = evidenceLog.slice().reverse().slice(0, 8).map(e => `
+    <div class="evidence-item">
+      <div class="ev-dot" style="background:var(--euca)"></div>
+      <div><div class="ev-text">${e.desc}</div><div class="ev-meta">Standard ${e.standard}: ${e.standardName} · ${e.level} · ${e.date}</div></div>
+    </div>`).join('');
+}
+
+function renderPrincipalStandards() {
+  const el = document.getElementById('principal-standards-list');
+  el.innerHTML = PRINCIPAL_STANDARDS.map(s => {
+    const items = evidenceLog.filter(e => e.standard === s.num);
+    const pct = Math.min(100, items.length * 15);
+    const levelCounts = { Aspiring: 0, Emerging: 0, Developing: 0, Transformational: 0 };
+    items.forEach(i => levelCounts[i.level] = (levelCounts[i.level] || 0) + 1);
+    const topLevel = Object.entries(levelCounts).filter(([,v]) => v > 0).sort(([,a],[,b]) => b-a)[0]?.[0] || 'Aspiring';
+    const tagClass = topLevel === 'Transformational' ? 'tag-green' : topLevel === 'Developing' ? 'tag-sage' : topLevel === 'Emerging' ? 'tag-warn' : 'tag-soft';
+    return `<div class="growth-card">
+      <div class="growth-hd"><div class="growth-name">Standard ${s.num} — ${s.name}</div><span class="tag ${tagClass}">${topLevel}</span></div>
+      <div class="bar-row"><div class="bar-track"><div class="bar-fill fill-euca" style="width:${pct}%"></div></div></div>
+      <div style="font-size:11px;color:var(--muted)">${items.length} evidence item${items.length !== 1 ? 's' : ''} · ${s.desc.substring(0,60)}...</div>
+    </div>`;
+  }).join('');
+}
+
+async function generateGrowthPlan() {
+  if (!evidenceLog.length) { showToast('Log some evidence first'); return; }
+  const summary = PRINCIPAL_STANDARDS.map(s => {
+    const items = evidenceLog.filter(e => e.standard === s.num);
+    return `Standard ${s.num} (${s.name}): ${items.length} evidence items — ${items.map(e => e.desc).join('; ') || 'none'}`;
+  }).join('\n');
+  await callAI(AI_SYSTEM,
+    `Generate a Missouri Principal Growth Plan for an assistant principal based on this evidence log:\n\n${summary}\n\nFor each of the 5 Principal Standards, write 2-3 sentences in OEQ language describing: current competency level (Aspiring/Emerging/Developing/Transformational), evidence of growth, and one specific growth target for next year. Use professional, formal language appropriate for an official growth plan document.`,
+    document.getElementById('growth-ai-output'));
+}
+
+// ─────────────────────────────────────────────
+// MODULE 5: STANDARDS
+// ─────────────────────────────────────────────
+let currentFilter = 'all';
+function renderStandards(filter) {
+  currentFilter = filter;
+  const grid = document.getElementById('standards-grid');
+  const query = document.getElementById('standards-search')?.value.toLowerCase() || '';
+  const filtered = MLS_STANDARDS.filter(s =>
+    (filter === 'all' || s.subject === filter) &&
+    (!query || s.code.toLowerCase().includes(query) || s.desc.toLowerCase().includes(query) || s.l3.toLowerCase().includes(query) || s.l4.toLowerCase().includes(query))
+  );
+  if (!filtered.length) {
+    grid.innerHTML = '<div style="color:var(--muted);font-size:12.5px;grid-column:1/-1">No standards match your search.</div>';
+    return;
+  }
+  const color = { ELA: 'var(--euca)', Math: 'var(--sage)', Science: 'var(--bark)', 'Social Studies': '#6B7C93' };
+  grid.innerHTML = filtered.map(s => `
+    <div class="std-card" onclick="showStdDetail('${s.code}')">
+      <div class="std-code" style="background:${color[s.subject] || 'var(--euca)'}">${s.code}</div>
+      <div style="font-size:10px;color:var(--muted);margin-bottom:3px">${s.subject} · ${s.grades}</div>
+      <div class="std-desc">${s.desc}</div>
+      <div style="font-size:11px;color:var(--text-mid);margin-top:6px;line-height:1.45"><strong style="color:var(--euca-deep)">L3:</strong> ${s.l3}</div>
+    </div>`).join('');
+}
+
+function searchStandards(query) { renderStandards(currentFilter); }
+function filterStd(filter, el) {
+  document.querySelectorAll('.tabs .tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  renderStandards(filter);
+}
+
+function showStdDetail(code) {
+  const s = MLS_STANDARDS.find(x => x.code === code);
+  if (!s) return;
+  const color = { ELA: 'var(--euca)', Math: 'var(--sage)', Science: 'var(--bark)', 'Social Studies': '#6B7C93' };
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay open';
+  modal.innerHTML = `<div class="modal" style="max-width:600px">
+    <div class="modal-title"><span style="background:${color[s.subject]};color:#fff;padding:2px 10px;border-radius:6px;font-size:14px;margin-right:8px">${s.code}</span>${s.desc} <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">×</button></div>
+    <div style="font-size:11.5px;color:var(--muted);margin-bottom:12px">${s.subject} · Grades ${s.grades}</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div style="background:rgba(92,139,110,0.08);border-radius:10px;padding:12px"><div style="font-size:10px;font-weight:700;color:var(--euca-deep);margin-bottom:5px">LEVEL 4 — DISTINGUISHED</div><div style="font-size:12px;line-height:1.5;color:var(--text)">${s.l4}</div></div>
+      <div style="background:rgba(92,139,110,0.05);border-radius:10px;padding:12px"><div style="font-size:10px;font-weight:700;color:var(--euca);margin-bottom:5px">LEVEL 3 — PROFICIENT</div><div style="font-size:12px;line-height:1.5;color:var(--text)">${s.l3}</div></div>
+      <div style="background:rgba(196,134,58,0.07);border-radius:10px;padding:12px"><div style="font-size:10px;font-weight:700;color:var(--warn);margin-bottom:5px">LEVEL 2 — DEVELOPING</div><div style="font-size:12px;line-height:1.5;color:var(--text)">${s.l2}</div></div>
+      <div style="background:rgba(184,85,85,0.07);border-radius:10px;padding:12px"><div style="font-size:10px;font-weight:700;color:var(--danger);margin-bottom:5px">LEVEL 1 — EMERGING</div><div style="font-size:12px;line-height:1.5;color:var(--text)">${s.l1}</div></div>
+    </div>
+    <div style="text-align:right;margin-top:16px"><button class="btn btn-primary" onclick="this.closest('.modal-overlay').remove()">Close</button></div>
+  </div>`;
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+  document.body.appendChild(modal);
+}
+
+// ─────────────────────────────────────────────
+// DASHBOARD UPDATE
+// ─────────────────────────────────────────────
+function updateDashboard() {
+  document.getElementById('ds-teachers').textContent = teachers.length;
+  const needAction = teachers.filter(t => ['st-over','st-due'].includes(evalStatus(t).cls)).length;
+  document.getElementById('ds-evals').textContent = needAction;
+  document.getElementById('ds-evidence').textContent = evidenceLog.length;
+  document.getElementById('ds-coaching').textContent = coachingCycles.length;
+
+  // Eval list
+  const evalEl = document.getElementById('dash-eval-list');
+  if (teachers.length) {
+    evalEl.innerHTML = teachers.slice(0,5).map(t => `
+      <div class="t-row">
+        <div class="t-av">${t.name.split(' ').map(w=>w[0]).join('').slice(0,2)}</div>
+        <div><div class="t-name">${t.name}</div><div class="t-sub">Grade ${t.grade} · ${t.observations.length} obs.</div></div>
+        <div class="t-status ${evalStatus(t).cls}">${evalStatus(t).label}</div>
+      </div>`).join('');
+  } else {
+    evalEl.innerHTML = '<div style="color:var(--muted);font-size:12.5px;text-align:center;padding:20px">Add teachers in the Eval module.</div>';
+  }
+
+  // Evidence list
+  const evEl = document.getElementById('dash-evidence-list');
+  if (evidenceLog.length) {
+    evEl.innerHTML = evidenceLog.slice().reverse().slice(0,4).map(e => `
+      <div class="evidence-item">
+        <div class="ev-dot" style="background:var(--euca)"></div>
+        <div><div class="ev-text">${e.desc.substring(0,80)}${e.desc.length > 80 ? '...' : ''}</div><div class="ev-meta">Std ${e.standard} · ${e.date}</div></div>
+      </div>`).join('');
+  } else {
+    evEl.innerHTML = '<div style="color:var(--muted);font-size:12.5px;text-align:center;padding:20px">Log evidence in My Growth.</div>';
+  }
+}
+
+// ─────────────────────────────────────────────
+// MODAL HELPERS
+// ─────────────────────────────────────────────
+function showModal(id) {
+  document.getElementById(id).classList.add('open');
+  if (id === 'modal-obs-help') renderStandardsGuide();
+}
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function closeModalOut(e, overlay) { if (e.target === overlay) overlay.classList.remove('open'); }
+
+function renderStandardsGuide() {
+  document.getElementById('mo-standards-guide').innerHTML = MO_STANDARDS.map(s => `
+    <div style="margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--border-soft)">
+      <div style="font-weight:700;color:var(--euca-deep);margin-bottom:5px">Standard ${s.num}: ${s.name}</div>
+      ${s.indicators.map(i => `<div style="font-size:11.5px;color:var(--text-mid);padding:2px 0">· ${i}</div>`).join('')}
+    </div>`).join('');
+}
+
+// ─────────────────────────────────────────────
+// TOAST
+// ─────────────────────────────────────────────
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+// ─────────────────────────────────────────────
+// BADGE
+// ─────────────────────────────────────────────
+function updateBadge(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = val;
+}
+
+// ─────────────────────────────────────────────
+// MODULE 6: AI CHAT
+// ─────────────────────────────────────────────
+let chatHistory = [];
+
+const CHAT_SYSTEM = `You are Kylee Meyer's personal AI coaching partner. Kylee is an Assistant Principal at Maple Grove Elementary School in the Northwest R-I School District in Dittmer, Missouri.
+
+You know:
+- Missouri's OEQ Educator Evaluation System inside and out
+- All 9 Missouri Teaching Standards and their quality indicators
+- The 5 Missouri Principal Standards (Visionary, Instructional, Managerial, Relational, Innovative Leadership)
+- The 4 competency levels: Aspiring → Emerging → Developing → Transformational
+- Research from Hattie's Visible Learning (effect sizes), Marzano's Art and Science of Teaching, and Teach Like a Champion by Doug Lemov
+- Missouri DESE requirements and the 7 Essential Principles of educator evaluation
+- Teacher effectiveness ratings: Ineffective, Minimally Effective, Effective, Highly Effective
+
+Your role: Be a warm, direct, practical thought partner. Help Kylee think through real situations she faces as an AP. Give specific, actionable advice grounded in research and Missouri standards. Ask clarifying questions when helpful. Be honest — if something is hard, say so. Keep responses conversational and focused — not too long unless she asks for depth.
+
+Never lecture. Never be preachy. Talk like a trusted colleague who happens to know a lot about instructional leadership and Missouri ed policy.`;
+
+async function sendChat() {
+  const input = document.getElementById('chat-input');
+  const msg = input.value.trim();
+  if (!msg) return;
+  if (!config.worker) {
+    appendChatMsg('ai', '⚠️ AI features need a Worker URL. Go to School Setup and paste your Cloudflare Worker URL to activate me!');
+    return;
+  }
+
+  appendChatMsg('user', msg);
+  chatHistory.push({ role: 'user', content: msg });
+  input.value = '';
+  input.style.height = 'auto';
+  document.getElementById('chat-send-btn').disabled = true;
+  document.getElementById('chat-suggestions').style.display = 'none';
+
+  // Typing indicator
+  const typingId = 'typing-' + Date.now();
+  const messagesEl = document.getElementById('chat-messages');
+  const typingEl = document.createElement('div');
+  typingEl.className = 'chat-msg ai';
+  typingEl.id = typingId;
+  typingEl.innerHTML = '<div class="chat-typing"><span></span><span></span><span></span></div>';
+  messagesEl.appendChild(typingEl);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+
+  try {
+    const res = await fetch(config.worker, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ system: CHAT_SYSTEM, messages: chatHistory.slice(-12) })
+    });
+    const data = await res.json();
+    const text = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('');
+
+    document.getElementById(typingId)?.remove();
+    if (text) {
+      chatHistory.push({ role: 'assistant', content: text });
+      appendChatMsg('ai', text);
+    } else {
+      appendChatMsg('ai', '⚠️ Something went wrong. Check your Worker URL in School Setup.');
+    }
+  } catch(e) {
+    document.getElementById(typingId)?.remove();
+    appendChatMsg('ai', '⚠️ Connection error. Check your Worker URL in School Setup.');
+  }
+
+  document.getElementById('chat-send-btn').disabled = false;
+}
+
+function appendChatMsg(role, text) {
+  const messagesEl = document.getElementById('chat-messages');
+  const div = document.createElement('div');
+  div.className = `chat-msg ${role}`;
+  const time = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  div.innerHTML = `<div class="chat-bubble">${text.replace(/\n/g,'<br>')}</div><div class="chat-msg-meta">${role === 'user' ? 'You' : 'AI Coach'} · ${time}</div>`;
+  messagesEl.appendChild(div);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+function sendSuggestion(text) {
+  document.getElementById('chat-input').value = text;
+  sendChat();
+}
+
+function chatKeyDown(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); }
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
+
+window.addEventListener('DOMContentLoaded', () => {
+  // Date
+  const d = new Date();
+  document.getElementById('dash-date').textContent = d.toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' }) + ' · Your personal command center';
+  // Load config
+  loadConfig();
+  // Set today's date in modals
+  ['obs-date','ev-date','nc-start','at-due'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el && el.type === 'date') el.valueAsDate = new Date();
+  });
+  // Initial standards render
+  renderStandards('all');
+  renderPrincipalStandards();
+  updateDashboard();
+});
+</script>
+</body>
+</html>
