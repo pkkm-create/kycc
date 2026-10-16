@@ -1269,6 +1269,10 @@ Everything stays private — this conversation isn't stored anywhere.</div>
     <button class="btn btn-primary" style="padding:12px 28px;font-size:14px" onclick="generateFullDailySummary()" id="summarize-btn">✦ Summarize My Day</button>
     <div id="daily-summary-output" style="margin-top:16px"></div>
   </div>
+
+  <!-- Past notes (read-only) -->
+  <div class="section-hd">Past Notes</div>
+  <div id="past-notes-panel" style="margin-bottom:24px"></div>
 </div>
 
 <div class="panel" id="panel-privacy">
@@ -4455,12 +4459,81 @@ async function renderNotesPanel() {
     timerEl.textContent = data.notes.length ? `${data.notes.length} note${data.notes.length!==1?'s':''} logged today` : 'Add notes below';
   }
   renderNotesPanelList();
+  renderPastNotes();
   // Clear previous summary output when navigating to panel
   const summaryOut = document.getElementById('daily-summary-output');
   if (summaryOut && !data.generated) summaryOut.innerHTML = '';
   else if (summaryOut && data.generated) {
     summaryOut.innerHTML = `<div class="ai-box"><div style="font-size:12px;font-weight:700;color:rgba(255,255,255,0.6);margin-bottom:8px;font-family:'DM Mono',monospace;letter-spacing:1px">DAILY SUMMARY REPORT</div><div style="white-space:pre-wrap;font-size:12.5px;line-height:1.7">${data.generated}</div><div style="margin-top:12px;display:flex;gap:8px"><button class="btn btn-soft btn-sm" style="background:rgba(255,255,255,0.15);color:#fff;border-color:rgba(255,255,255,0.2)" onclick="copyToClipboard(document.getElementById('summary-text-content').textContent)">📋 Copy</button><button class="btn btn-soft btn-sm" style="background:rgba(255,255,255,0.15);color:#fff;border-color:rgba(255,255,255,0.2)" onclick="regenerateDailySummary()">↻ Regenerate</button></div><div id="summary-text-content" style="display:none">${data.generated}</div></div>`;
   }
+}
+
+// ── PAST NOTES (read-only, one entry per saved day) ──
+const pastNotesCache = {};
+function escHTML(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+async function renderPastNotes() {
+  const el = document.getElementById('past-notes-panel');
+  if (!el) return;
+  const prefix = getDailySummaryKey().replace(/\d{4}-\d{2}-\d{2}$/, '');
+  let keys;
+  try {
+    const res = await fetch(`${KV_WORKER}/data/${KV_USER}/list?prefix=${encodeURIComponent(prefix)}`);
+    if (!res.ok) throw new Error('list failed');
+    keys = (await res.json()).keys || [];
+  } catch(e) {
+    el.innerHTML = '<div style="color:var(--muted);font-size:12.5px;padding:12px">Past notes are unavailable right now. Check your connection and reopen Daily Notes.</div>';
+    return;
+  }
+  const today = getDailySummaryKey();
+  keys = keys.filter(k => k !== today && /\d{4}-\d{2}-\d{2}$/.test(k)).sort().reverse();
+  if (!keys.length) {
+    el.innerHTML = '<div style="color:var(--muted);font-size:12.5px;text-align:center;padding:24px;border:1.5px dashed var(--border);border-radius:12px">No past notes yet.<br><span style="font-size:11px">Each day you add notes is saved here.</span></div>';
+    return;
+  }
+  el.innerHTML = `<div class="card">${keys.map(k => {
+    const date = k.slice(prefix.length);
+    const label = new Date(date + 'T00:00:00').toLocaleDateString('en-US', {weekday:'long', month:'long', day:'numeric', year:'numeric'});
+    return `<div style="border-bottom:1px solid var(--border-soft)">
+      <button onclick="togglePastDay('${k}')" style="width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 16px;background:none;border:none;cursor:pointer;font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;color:var(--text);text-align:left">
+        <span>${label}</span><span id="past-arrow-${k}" style="color:var(--muted)">▸</span>
+      </button>
+      <div id="past-${k}" style="display:none;padding:0 16px 12px"></div>
+    </div>`;
+  }).join('')}</div>`;
+}
+async function togglePastDay(key) {
+  const box = document.getElementById('past-' + key);
+  const arrow = document.getElementById('past-arrow-' + key);
+  if (!box) return;
+  if (box.style.display !== 'none') { box.style.display = 'none'; if (arrow) arrow.textContent = '▸'; return; }
+  box.style.display = 'block';
+  if (arrow) arrow.textContent = '▾';
+  if (!pastNotesCache[key]) {
+    box.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:6px 0">Loading…</div>';
+    try {
+      const v = await kvGet(key);
+      pastNotesCache[key] = v ? JSON.parse(v) : { notes: [] };
+    } catch(e) {
+      box.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:6px 0">Could not load this day.</div>';
+      return;
+    }
+  }
+  const data = pastNotesCache[key];
+  const notes = Array.isArray(data.notes) ? data.notes : [];
+  const catIcons = {General:'📝',Observation:'👁',Meeting:'🤝','Follow-Up':'📌',Win:'⭐',Concern:'⚠️',Parent:'📞','Student Support':'🧩'};
+  const grouped = {};
+  notes.forEach(n => { const c = n.category || 'General'; (grouped[c] = grouped[c] || []).push(n); });
+  let html = notes.length ? Object.entries(grouped).map(([cat, list]) => `
+    <div style="margin-top:8px">
+      <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">${catIcons[cat] || '📝'} ${escHTML(cat)} (${list.length})</div>
+      ${list.map(n => `<div class="note-entry"><span style="font-size:10px;color:var(--muted);flex-shrink:0;margin-top:2px;min-width:42px">${escHTML(n.time)}</span><span style="font-size:13px;color:var(--text);flex:1;line-height:1.5">${escHTML(n.text)}</span></div>`).join('')}
+    </div>`).join('') : '<div style="color:var(--muted);font-size:12px;padding:6px 0">No notes were saved this day.</div>';
+  if (data.generated) {
+    html += `<div class="ai-box"><div style="font-size:12px;font-weight:700;color:rgba(255,255,255,0.6);margin-bottom:8px;font-family:'DM Mono',monospace;letter-spacing:1px">DAILY SUMMARY REPORT</div><div style="white-space:pre-wrap;font-size:12.5px;line-height:1.7">${escHTML(data.generated)}</div></div>`;
+  }
+  box.innerHTML = html;
 }
 
 async function renderNotesPanelList() {
