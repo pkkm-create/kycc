@@ -2405,7 +2405,8 @@ async function kvGet(key) {
     const res = await fetch(`${KV_WORKER}/data/${KV_USER}/get/${encodeURIComponent(key)}`);
     if (!res.ok) throw new Error('kv get failed');
     const d = await res.json();
-    return d.value;           // null if key not found
+    // Nothing on the server yet: use the copy saved on this device, if any
+    return d.value != null ? d.value : localStorage.getItem(key);
   } catch(e) {
     return localStorage.getItem(key);   // fallback
   }
@@ -2416,12 +2417,16 @@ async function kvSet(key, value) {
   // optimistic local write first so UI doesn't wait
   try { localStorage.setItem(key, strVal); } catch(e) {}
   try {
-    await fetch(`${KV_WORKER}/data/${KV_USER}/set`, {
+    const res = await fetch(`${KV_WORKER}/data/${KV_USER}/set`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ key, value: strVal })
     });
-  } catch(e) { /* silently keep localStorage copy */ }
+    if (!res.ok) throw new Error('kv set failed');
+  } catch(e) {
+    // localStorage copy is kept; let the user know it didn't sync
+    showToast('Saved on this device only (sync unavailable)');
+  }
 }
 
 async function kvDelete(key) {
@@ -2565,17 +2570,35 @@ ELA Essential Elements provide alternate grade-level standards with 5 Linkage Le
 // ─────────────────────────────────────────────
 // 24HR DAILY SUMMARY (anonymous, device-only)
 // ─────────────────────────────────────────────
+function todayLocal() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
 function getDailySummaryKey() {
-  return 'kylee_daily_' + new Date().toISOString().slice(0,10);
+  return 'kylee_daily_' + todayLocal();
+}
+let dailyCache = null;   // { key, data } for today, so reads after a save see the new note
+function emptyDailySummary() {
+  return { date: todayLocal(), notes: [], generated: null, timestamp: Date.now() };
 }
 async function loadDailySummary() {
+  const key = getDailySummaryKey();
+  if (dailyCache && dailyCache.key === key) return dailyCache.data;
+  let data = null;
   try {
-    const saved = await kvGet(getDailySummaryKey());
-    return saved ? JSON.parse(saved) : { date: new Date().toISOString().slice(0,10), notes: [], generated: null, timestamp: Date.now() };
-  } catch(e) { return { date: new Date().toISOString().slice(0,10), notes: [], generated: null, timestamp: Date.now() }; }
+    const saved = await kvGet(key);
+    data = saved ? JSON.parse(saved) : null;
+  } catch(e) {}
+  if (!data || !Array.isArray(data.notes)) data = emptyDailySummary();
+  if (dailyCache && dailyCache.key === key) return dailyCache.data;   // another call finished first
+  dailyCache = { key, data };
+  return data;
 }
 function saveDailySummary(data) {
-  kvSet(getDailySummaryKey(), { ...data, timestamp: Date.now() });
+  data.timestamp = Date.now();
+  const key = getDailySummaryKey();
+  dailyCache = { key, data };
+  return kvSet(key, data);
 }
 async function addDailyNote(note) {
   if (!note.trim()) return;
@@ -2588,18 +2611,19 @@ async function addDailyNote(note) {
   showToast('Note added ✓'); updateNotesBadge();
   loadPlannerEvents();
 }
-function clearDailySummary() {
+async function clearDailySummary() {
   if (!confirm('Clear today\'s summary notes?')) return;
-  kvDelete(getDailySummaryKey());
+  dailyCache = { key: getDailySummaryKey(), data: emptyDailySummary() };
+  await kvDelete(getDailySummaryKey());
   renderDailyWidget();
   updateNotesBadge();
   loadPlannerEvents();
   showToast('Today\'s summary cleared');
 }
-function renderDailyWidget() {
+async function renderDailyWidget() {
   const el = document.getElementById('daily-summary-widget');
   if (!el) return;
-  const data = loadDailySummary();
+  const data = await loadDailySummary();
   const timeLeft = Math.max(0, Math.floor((24 * 60 * 60 * 1000 - (Date.now() - (data.timestamp || Date.now()))) / (60 * 60 * 1000)));
   el.innerHTML = `
     <div class="card">
@@ -2630,8 +2654,8 @@ function renderDailyWidget() {
       </div>
     </div>`;
 }
-function removeDailyNote(idx) {
-  const data = loadDailySummary();
+async function removeDailyNote(idx) {
+  const data = await loadDailySummary();
   data.notes.splice(idx, 1);
   saveDailySummary(data);
   renderDailyWidget();
@@ -2639,7 +2663,7 @@ function removeDailyNote(idx) {
   loadPlannerEvents();
 }
 async function generateDailySummaryAI() {
-  const data = loadDailySummary();
+  const data = await loadDailySummary();
   if (!data.notes.length) { showToast('Add some notes first'); return; }
   const el = document.getElementById('daily-summary-widget').querySelector('.ai-box') || (() => {
     const d = document.createElement('div'); d.className = 'ai-box'; d.style.marginTop = '12px';
@@ -3738,7 +3762,7 @@ function showStdDetail(code) {
 // ─────────────────────────────────────────────
 // DASHBOARD UPDATE
 // ─────────────────────────────────────────────
-function updateDashboard() {
+async function updateDashboard() {
   // Tile counts
   const bEl = document.getElementById('ds-behaviors');
   const eEl = document.getElementById('ds-evals');
@@ -3746,7 +3770,7 @@ function updateDashboard() {
   const evEl = document.getElementById('ds-evidence');
   if (bEl) bEl.textContent = incidents.length;
   if (eEl) eEl.textContent = teachers.length;
-  const nd = loadDailySummary();
+  const nd = await loadDailySummary();
   if (nEl) nEl.textContent = nd.notes.length;
   if (evEl) evEl.textContent = evidenceLog.length;
 
@@ -4347,11 +4371,11 @@ function selectNoteCategory(el) {
   selectedNoteCategory = el.dataset.cat;
 }
 
-function addDailyNoteFromPanel() {
+async function addDailyNoteFromPanel() {
   const input = document.getElementById('notes-input');
   const text = input?.value.trim();
   if (!text) { showToast('Enter a note first'); return; }
-  const data = loadDailySummary();
+  const data = await loadDailySummary();
   data.notes.push({
     text,
     category: selectedNoteCategory,
@@ -4369,13 +4393,13 @@ function addDailyNoteFromPanel() {
   showToast('Note added ✓');
 }
 
-function updateNotesBadge() {
-  const data = loadDailySummary();
+async function updateNotesBadge() {
+  const data = await loadDailySummary();
   const badge = document.getElementById('badge-notes');
   if (badge) badge.textContent = data.notes.length || '';
 }
 
-function renderNotesPanel() {
+async function renderNotesPanel() {
   // Update date display
   const dateEl = document.getElementById('notes-date-display');
   if (dateEl) {
@@ -4383,7 +4407,7 @@ function renderNotesPanel() {
     dateEl.textContent = d.toLocaleDateString('en-US', {weekday:'long', month:'long', day:'numeric', year:'numeric'});
   }
   // Update timer
-  const data = loadDailySummary();
+  const data = await loadDailySummary();
   const timerEl = document.getElementById('notes-timer-display');
   if (timerEl) {
     const hoursLeft = Math.max(0, Math.floor((24*60*60*1000 - (Date.now() - (data.timestamp||Date.now()))) / (60*60*1000)));
@@ -4398,10 +4422,10 @@ function renderNotesPanel() {
   }
 }
 
-function renderNotesPanelList() {
+async function renderNotesPanelList() {
   const el = document.getElementById('notes-list-panel');
   if (!el) return;
-  const data = loadDailySummary();
+  const data = await loadDailySummary();
   if (!data.notes.length) {
     el.innerHTML = '<div style="color:var(--muted);font-size:12.5px;text-align:center;padding:32px;border:1.5px dashed var(--border);border-radius:12px">No notes yet today.<br><span style="font-size:11px">Use the form above to capture observations, meetings, and follow-ups.</span></div>';
     return;
@@ -4427,8 +4451,8 @@ function renderNotesPanelList() {
   </div>`;
 }
 
-function removeNoteByIdx(idx) {
-  const data = loadDailySummary();
+async function removeNoteByIdx(idx) {
+  const data = await loadDailySummary();
   data.notes.splice(idx, 1);
   saveDailySummary(data);
   renderNotesPanelList();
@@ -4439,9 +4463,10 @@ function removeNoteByIdx(idx) {
   loadPlannerEvents();
 }
 
-function clearDailyNotes() {
+async function clearDailyNotes() {
   if (!confirm('Clear all notes for today?')) return;
-  kvDelete(getDailySummaryKey());
+  dailyCache = { key: getDailySummaryKey(), data: emptyDailySummary() };
+  await kvDelete(getDailySummaryKey());
   renderNotesPanelList();
   renderDailyWidget();
   updateNotesBadge();
@@ -4454,7 +4479,7 @@ function clearDailyNotes() {
 }
 
 async function generateFullDailySummary() {
-  const data = loadDailySummary();
+  const data = await loadDailySummary();
   if (!data.notes.length) { showToast('Add some notes first'); return; }
   const btn = document.getElementById('summarize-btn');
   const el = document.getElementById('daily-summary-output');
@@ -4520,17 +4545,23 @@ const EV_LABELS = {
   pd:'PD', observation:'Observation', parent:'Parent', student:'Student Support'
 };
 
-async function loadPlannerEvents() {
-  try {
-    const saved = await kvGet(PLANNER_KEY);
-    plannerEvents = saved ? JSON.parse(saved) : [];
-  } catch(e) { plannerEvents = []; }
+let plannerLoad = null;   // one shared load per page visit
+function loadPlannerEvents() {
+  if (!plannerLoad) plannerLoad = (async () => {
+    try {
+      const saved = await kvGet(PLANNER_KEY);
+      plannerEvents = saved ? JSON.parse(saved) : [];
+    } catch(e) { plannerEvents = []; }
+    // Events arrived after the planner may have drawn empty; redraw it
+    if (document.getElementById('panel-planner')?.classList.contains('active')) renderPlanner();
+  })();
+  return plannerLoad;
 }
 function savePlannerEvents() {
   kvSet(PLANNER_KEY, plannerEvents);
 }
 
-function saveEvent() {
+async function saveEvent() {
   const title = document.getElementById('ev-title').value.trim();
   const date = document.getElementById('ev-plan-date').value;
   if (!title || !date) { showToast('Title and date are required'); return; }
@@ -4544,7 +4575,7 @@ function saveEvent() {
     notes: document.getElementById('ev-notes').value.trim(),
     repeat: document.getElementById('ev-repeat').value,
   };
-  loadPlannerEvents();
+  await loadPlannerEvents();
   plannerEvents.push(ev);
   savePlannerEvents();
   closeModal('modal-add-event');
@@ -4555,8 +4586,8 @@ function saveEvent() {
   showToast('Event saved ✓');
 }
 
-function deleteEvent(id) {
-  loadPlannerEvents();
+async function deleteEvent(id) {
+  await loadPlannerEvents();
   plannerEvents = plannerEvents.filter(e => e.id !== id);
   savePlannerEvents();
   closeModal('modal-event-detail');
@@ -4944,13 +4975,13 @@ function showImportPreview(events, previewEl) {
   previewEl.querySelector('.btn').onclick = () => confirmImport(events);
 }
 
-function confirmImport(events) {
+async function confirmImport(events) {
   const checkboxes = document.querySelectorAll('[id^="imp-ev-"]');
   const toImport = events.filter((e,i) => {
     const cb = document.getElementById(`imp-ev-${i}`);
     return cb ? cb.checked : true;
   });
-  loadPlannerEvents();
+  await loadPlannerEvents();
   toImport.forEach(e => {
     plannerEvents.push({...e, id: Date.now() + Math.random()});
   });
